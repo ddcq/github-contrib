@@ -2,11 +2,12 @@
 
 ![contributions](https://raw.githubusercontent.com/ddcq/github-contrib/main/contributions.svg)
 
-Calendrier de contributions GitHub généré depuis GraphQL `ContributionsCollection` (user `ddcq`), avec vague animée et 5 thèmes couleur.
+Calendrier de contributions GitHub généré depuis GraphQL `ContributionsCollection` (user `ddcq`), avec vague animée et 6 thèmes couleur.
 
 | Thème | Fichier | Aperçu |
 |---|---|---|
-| dark-green (défaut, legacy) | `contributions.svg` | ![dark-green](https://raw.githubusercontent.com/ddcq/github-contrib/main/contributions.svg) |
+| dark-green (défaut) | `contributions.svg` | ![dark-green](https://raw.githubusercontent.com/ddcq/github-contrib/main/contributions.svg) |
+| green (legacy) | `contributions-green.svg` | ![green](https://raw.githubusercontent.com/ddcq/github-contrib/main/contributions-green.svg) |
 | blue | `contributions-blue.svg` | ![blue](https://raw.githubusercontent.com/ddcq/github-contrib/main/contributions-blue.svg) |
 | dark-blue | `contributions-dark-blue.svg` | ![dark-blue](https://raw.githubusercontent.com/ddcq/github-contrib/main/contributions-dark-blue.svg) |
 | red | `contributions-red.svg` | ![red](https://raw.githubusercontent.com/ddcq/github-contrib/main/contributions-red.svg) |
@@ -32,8 +33,8 @@ PYTHONPATH=src python3 -m github_contrib --login ddcq --out contributions.svg --
 --to TO_ISO              borne fin (optionnel)
 --token TOKEN            override GITHUB_TOKEN / GITHUB_DDCQ_READ
 --animate {wave,none}    wave (défaut) ou none = statique Phase1 byte-identique
---theme {all,dark-green,blue,dark-blue,red,dark-red}
-                         all (défaut) = 5 fichiers, sinon 1 seul vers --out
+--theme {all,dark-green,green,blue,dark-blue,red,dark-red}
+                         all (défaut) = 6 fichiers, sinon 1 seul vers --out
 --wave SPEC              DSL vague, répétable pour chaînage (défaut diagonal).
                          Ex. "diagonal(color=#116329,scale=1.3,dy=-5)"
 --waves-file JSON        fichier {"waves": ["diagonal", "radial(invert=true)"]},
@@ -45,18 +46,19 @@ Priorité token : `--token` > `GITHUB_TOKEN` > `GITHUB_DDCQ_READ` > cache seul.
 
 ## Thèmes
 
-`--theme all` (défaut) écrit 5 fichiers : `--out` tel quel pour `dark-green` + suffixes `-blue`, `-dark-blue`, `-red`, `-dark-red` avant extension. `--theme X` écrit 1 seul fichier vers `--out` exact.
+`--theme all` (défaut) écrit 6 fichiers : `--out` tel quel pour `dark-green` + suffixes `-green`, `-blue`, `-dark-blue`, `-red`, `-dark-red` avant extension. `--theme X` écrit 1 seul fichier vers `--out` exact.
 
 | Thème | Fond | Texte | NONE | L1 | L2 | L3 | L4 (= reflet vague défaut) |
 |---|---|---|---|---|---|---|---|
-| dark-green | transparent | `#1f2328` | `#eff2f5` | `#aceebb` | `#4ac26b` | `#2da44e` | `#116329` |
+| dark-green (défaut, GitHub dark officiel) | `#0d1117` | `#e6edf3` | `#161b22` | `#0e4429` | `#006d32` | `#26a641` | `#39d353` |
+| green (legacy) | transparent | `#1f2328` | `#eff2f5` | `#aceebb` | `#4ac26b` | `#2da44e` | `#116329` |
 | blue (Winter light officiel) | transparent | `#1f2328` | `#eff2f5` | `#b6e3ff` | `#54aeff` | `#0969da` | `#0a3069` |
 | dark-blue (Winter dark officiel) | `#0d1117` | `#e6edf3` | `#161b22` | `#0a3069` | `#0969da` | `#54aeff` | `#b6e3ff` |
 | red | transparent | `#1f2328` | `#eff2f5` | `#ffebe9` | `#ffb3b0` | `#e94a3f` | `#a40e26` |
 | dark-red | `#0d1117` | `#e6edf3` | `#161b22` | `#5c0a0e` | `#a40e26` | `#e94a3f` | `#ffb3b0` |
 
 Règle couleur cases :
-- `dark-green` (legacy) garde `color` API GitHub si présent → sortie Phase1 inchangée.
+- `green` (legacy) garde `color` API GitHub si présent → sortie Phase1 inchangée.
 - autres thèmes mappent `contributionLevel` → palette (sinon vert API écraserait thème).
 - légende `Less/More` suit palette thème.
 
@@ -135,7 +137,7 @@ PYTHONPATH=src python3 -m github_contrib --login ddcq --out contributions.svg
 
 ## Automation
 
-Action `contributions` : schedule `0 6 * * *` + `workflow_dispatch`, `runs-on: ubuntu-24.04`, `actions/checkout@v6` + `actions/setup-python@v6` (runtime Node24). Génère les 5 SVG puis commit sur branche `bot/refresh-contributions` (jamais `main` direct) : merge manuel vers `main` après contrôle.
+Action `contributions` : schedule `0 6 * * *` + `workflow_dispatch`, `runs-on: ubuntu-24.04`, `actions/checkout@v6` + `actions/setup-python@v6` (runtime Node24). Génère les 6 SVG puis commit sur branche `bot/refresh-contributions` (jamais `main` direct) : merge manuel vers `main` après contrôle.
 
 - Token : `github.token` par défaut (publiques). Privées incluses via secret `CONTRIB_PAT` (classic, scope `read:user`).
 - Mise en route : `git push -u origin main`, puis onglet Actions.

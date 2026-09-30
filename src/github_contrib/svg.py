@@ -64,12 +64,19 @@ def tooltip(day_date, count):
 
 
 THEMES = {
-    "dark-green": {
+    "green": {
         "NONE": "#eff2f5",
         "FIRST_QUARTILE": "#aceebb",
         "SECOND_QUARTILE": "#4ac26b",
         "THIRD_QUARTILE": "#2da44e",
         "FOURTH_QUARTILE": "#116329",
+    },
+    "dark-green": {
+        "NONE": "#161b22",
+        "FIRST_QUARTILE": "#0e4429",
+        "SECOND_QUARTILE": "#006d32",
+        "THIRD_QUARTILE": "#26a641",
+        "FOURTH_QUARTILE": "#39d353",
     },
     "blue": {
         "NONE": "#eff2f5",
@@ -103,22 +110,24 @@ THEMES = {
 
 # Fond + texte par theme (standard GitHub light/dark).
 THEME_BG = {
-    "dark-green": None,
+    "green": None,
     "blue": None,
     "red": None,
+    "dark-green": "#0d1117",
     "dark-blue": "#0d1117",
     "dark-red": "#0d1117",
 }
 
 THEME_FG = {
-    "dark-green": "#1f2328",
+    "green": "#1f2328",
     "blue": "#1f2328",
     "red": "#1f2328",
+    "dark-green": "#e6edf3",
     "dark-blue": "#e6edf3",
     "dark-red": "#e6edf3",
 }
 
-THEME_NAMES = ["dark-green", "blue", "dark-blue", "red", "dark-red"]
+THEME_NAMES = ["dark-green", "green", "blue", "dark-blue", "red", "dark-red"]
 
 
 def _parse_day(d, palette=None, keep_api=True):
@@ -285,9 +294,9 @@ def calendar_to_svg(weeks, animate="wave", theme="dark-green", waves=None):
     palette = THEMES.get(theme, THEMES["dark-green"])
     bg = THEME_BG.get(theme)
     fg = THEME_FG.get(theme, "#1f2328")
-    # Legacy dark-green garde couleur API pour compat byte-identique Phase1.
+    # Theme green garde couleur API (identique palette legacy).
     # Autres themes mappent level -> palette (sinon API verte écrase theme).
-    keep_api = (theme == "dark-green")
+    keep_api = (theme == "green")
     wave_list = [parse_wave_spec(w) for w in waves] if waves else DEFAULT_WAVES
     n_weeks = len(weeks)
     grid_w = n_weeks * PITCH + GAP

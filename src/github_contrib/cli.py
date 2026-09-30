@@ -14,7 +14,7 @@ def build_parser():
     p.add_argument("--animate", choices=["wave", "none"], default="wave",
                    help="Animation SVG : wave (defaut) ou none (statique Phase1)")
     p.add_argument("--theme", default="all",
-                   choices=["all", "dark-green", "blue", "dark-blue",
+                   choices=["all", "dark-green", "green", "blue", "dark-blue",
                             "red", "dark-red"],
                    help="Theme couleur : un seul theme ou all (defaut, tous themes)")
     p.add_argument("--wave", action="append", default=None, metavar="SPEC",

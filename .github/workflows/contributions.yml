@@ -27,6 +27,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -B "$BOT_BRANCH"
-          git add contributions.svg contributions-blue.svg contributions-dark-blue.svg contributions-red.svg contributions-dark-red.svg
+          git add contributions.svg contributions-green.svg contributions-dark-green.svg contributions-blue.svg contributions-dark-blue.svg contributions-red.svg contributions-dark-red.svg
           git diff --cached --quiet || git commit -m "chore: refresh contributions.svg"
           git push -u origin "$BOT_BRANCH"

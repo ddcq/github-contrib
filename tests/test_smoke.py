@@ -22,14 +22,14 @@ def _weeks():
 
 
 def test_none_matches_legacy_static():
-    out = svg.calendar_to_svg(_weeks(), animate="none")
+    out = svg.calendar_to_svg(_weeks(), animate="none", theme="green")
     assert "cell-wave" not in out
     assert "<style>" not in out
     assert 'fill="#eff2f5"' in out
 
 
 def test_wave_injects_style_once():
-    out = svg.calendar_to_svg(_weeks(), animate="wave")
+    out = svg.calendar_to_svg(_weeks(), animate="wave", theme="green")
     assert out.count("<style>") == 1
     assert "@keyframes wave0" in out
     assert "prefers-reduced-motion" in out
@@ -40,7 +40,7 @@ def test_wave_injects_style_once():
 
 
 def test_wave_delay_diagonal():
-    out = svg.calendar_to_svg(_weeks(), animate="wave")
+    out = svg.calendar_to_svg(_weeks(), animate="wave", theme="green")
     # wi=0,row=1 (lundi 28/09) -> 0*35+1*65=65 ; wi=0,row=2 -> 130
     assert "--orig:#eff2f5;animation-delay:65ms" in out
     assert "animation-delay:130ms" in out
@@ -49,12 +49,12 @@ def test_wave_delay_diagonal():
 
 
 def test_wave_orig_matches_fill():
-    out = svg.calendar_to_svg(_weeks(), animate="wave")
+    out = svg.calendar_to_svg(_weeks(), animate="wave", theme="green")
     assert 'fill="#eff2f5" class="cell-wave" style="--orig:#eff2f5;' in out
 
 
 def test_themes_registered():
-    assert svg.THEME_NAMES == ["dark-green", "blue", "dark-blue", "red", "dark-red"]
+    assert svg.THEME_NAMES == ["dark-green", "green", "blue", "dark-blue", "red", "dark-red"]
     for name in svg.THEME_NAMES:
         pal = svg.THEMES[name]
         assert set(pal) == {"NONE", "FIRST_QUARTILE", "SECOND_QUARTILE",
@@ -70,8 +70,19 @@ def _weeks_with_api_color():
 
 def test_dark_green_keeps_api_color():
     out = svg.calendar_to_svg(_weeks_with_api_color(), animate="none",
-                              theme="dark-green")
+                              theme="green")
     assert 'fill="#116329"' in out
+
+
+def test_dark_green_default_dark():
+    pal = svg.THEMES["dark-green"]
+    assert pal["NONE"] == "#161b22"
+    assert pal["FOURTH_QUARTILE"] == "#39d353"
+    out = svg.calendar_to_svg(_weeks_with_api_color(), animate="none",
+                              theme="dark-green")
+    assert 'fill="#116329"' not in out
+    assert 'fill="#0d1117"' in out
+    assert 'fill="#e6edf3"' in out
 
 
 def test_blue_maps_level_not_api():
@@ -94,6 +105,7 @@ def test_theme_outputs_naming():
     assert [n for n, _ in outs] == svg.THEME_NAMES
     paths = [p for _, p in outs]
     assert paths[0] == "contributions.svg"
+    assert "contributions-green.svg" in paths
     assert "contributions-blue.svg" in paths
     assert "contributions-dark-blue.svg" in paths
     assert "contributions-red.svg" in paths

@@ -16,13 +16,11 @@ Spécification phase 1 prête à implémenter : script Python qui interroge Grap
 - [Rendu calendrier GitHub exact](.scratch/svg-contributions/issues/02-github-calendar-render.md): palette Primer light + cellules 10px gap 3px + labels/tooltips/legende verrouilles.
 - [Shape GraphQL ContributionsCollection](.scratch/svg-contributions/issues/01-graphql-contributions-shape.md): query minimale + levels relatifs + scope read:user avec fallback public.
 - [Échantillon réel + token](.scratch/svg-contributions/issues/03-sample-data-token.md): fetch live ddcq OK, total 680 sur 53 semaines, SVG 368 jours généré.
+- [Spec CLI + SVG](.scratch/svg-contributions/issues/04-cli-svg-spec.md): glissant par défaut, cache brut + --no-fetch, token --token > GITHUB_TOKEN > GITHUB_DDCQ_READ, SVG standalone + légende.
 
 ## Not yet specified
 
-- Seuils exacts des 5 niveaux de verts vs comptes (dépend du rendu GitHub réel).
-- Détail tooltips / `<title>` et accessibilité du SVG.
-- Format du cache JSON et politique de refresh manuel.
-- Gestion des cas limites : années bissextiles, fuseaux, comptes privés à zéro.
+- Gestion des cas limites : années bissextiles, fuseaux (couverts via dates ISO + weekday, à valider sur année civile).
 
 ## Out of scope
 

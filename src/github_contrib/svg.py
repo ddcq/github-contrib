@@ -60,16 +60,104 @@ def tooltip(day_date, count):
     return f"{count} contributions on {full}."
 
 
-def _parse_day(d):
+THEMES = {
+    "dark-green": {
+        "NONE": "#eff2f5",
+        "FIRST_QUARTILE": "#aceebb",
+        "SECOND_QUARTILE": "#4ac26b",
+        "THIRD_QUARTILE": "#2da44e",
+        "FOURTH_QUARTILE": "#116329",
+    },
+    "blue": {
+        "NONE": "#eff2f5",
+        "FIRST_QUARTILE": "#b6e3ff",
+        "SECOND_QUARTILE": "#54aeff",
+        "THIRD_QUARTILE": "#0969da",
+        "FOURTH_QUARTILE": "#0a3069",
+    },
+    "dark-blue": {
+        "NONE": "#161b22",
+        "FIRST_QUARTILE": "#0a3069",
+        "SECOND_QUARTILE": "#0969da",
+        "THIRD_QUARTILE": "#54aeff",
+        "FOURTH_QUARTILE": "#b6e3ff",
+    },
+    "red": {
+        "NONE": "#eff2f5",
+        "FIRST_QUARTILE": "#ffebe9",
+        "SECOND_QUARTILE": "#ffb3b0",
+        "THIRD_QUARTILE": "#e94a3f",
+        "FOURTH_QUARTILE": "#a40e26",
+    },
+    "dark-red": {
+        "NONE": "#161b22",
+        "FIRST_QUARTILE": "#5c0a0e",
+        "SECOND_QUARTILE": "#a40e26",
+        "THIRD_QUARTILE": "#e94a3f",
+        "FOURTH_QUARTILE": "#ffb3b0",
+    },
+}
+
+# Fond + texte par theme (standard GitHub light/dark).
+THEME_BG = {
+    "dark-green": None,
+    "blue": None,
+    "red": None,
+    "dark-blue": "#0d1117",
+    "dark-red": "#0d1117",
+}
+
+THEME_FG = {
+    "dark-green": "#1f2328",
+    "blue": "#1f2328",
+    "red": "#1f2328",
+    "dark-blue": "#e6edf3",
+    "dark-red": "#e6edf3",
+}
+
+THEME_NAMES = ["dark-green", "blue", "dark-blue", "red", "dark-red"]
+
+
+def _parse_day(d, palette=None, keep_api=True):
     day_date = date.fromisoformat(d["date"])
     count = int(d.get("contributionCount", 0))
     level = d.get("contributionLevel", "NONE")
-    color = d.get("color") or PALETTE.get(level, PALETTE["NONE"])
+    pal = palette or PALETTE
+    if keep_api and d.get("color"):
+        color = d["color"]
+    else:
+        color = pal.get(level, pal["NONE"])
     return day_date, count, color
 
 
-def calendar_to_svg(weeks):
+WAVE_REFLECT = "#116329"
+WAVE_DURATION = "4.5s"
+WAVE_DELAY_COL = 35
+WAVE_DELAY_ROW = 65
+
+def wave_css(reflect):
+    return (
+        "<style>"
+        ".cell-wave{animation:wave " + WAVE_DURATION + " infinite;}"
+        "@keyframes wave{0%,14%,100%{fill:var(--orig);}"
+        "7%{fill:" + reflect + ";}}"
+        "@media (prefers-reduced-motion: reduce){.cell-wave{animation:none;}}"
+        "</style>"
+    )
+
+
+WAVE_CSS = wave_css(WAVE_REFLECT)
+
+
+def calendar_to_svg(weeks, animate="wave", theme="dark-green"):
     """Convertit weeks (liste de {contributionDays:[...]}) en str SVG."""
+    palette = THEMES.get(theme, THEMES["dark-green"])
+    reflect = palette["FOURTH_QUARTILE"]
+    bg = THEME_BG.get(theme)
+    fg = THEME_FG.get(theme, "#1f2328")
+    # Legacy dark-green garde couleur API pour compat byte-identique Phase1.
+    # Autres themes mappent level -> palette (sinon API verte écrase theme).
+    keep_api = (theme == "dark-green")
     n_weeks = len(weeks)
     grid_w = n_weeks * PITCH + GAP
     grid_h = 7 * PITCH + GAP
@@ -81,6 +169,12 @@ def calendar_to_svg(weeks):
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
         f'font-family="{FONT}" role="img" aria-label="Contribution calendar">'
     ]
+
+    if animate == "wave":
+        parts.append(wave_css(reflect))
+
+    if bg:
+        parts.append(f'<rect width="{width}" height="{height}" fill="{bg}"/>')
 
     # Labels mois : premier week ou le mois change
     seen_month = None
@@ -94,7 +188,7 @@ def calendar_to_svg(weeks):
             if first.month != seen_month:
                 x = GUTTER_W + wi * PITCH
                 parts.append(
-                    f'<text x="{x}" y="10" font-size="10" fill="#1f2328">'
+                    f'<text x="{x}" y="10" font-size="10" fill="{fg}">'
                     f"{MONTHS[first.month - 1]}</text>"
                 )
                 seen_month = first.month
@@ -103,42 +197,52 @@ def calendar_to_svg(weeks):
     for row, label in DAY_LABELS.items():
         y = MONTH_H + row * PITCH + CELL - 1
         parts.append(
-            f'<text x="0" y="{y}" font-size="9" fill="#1f2328">{label}</text>'
+            f'<text x="0" y="{y}" font-size="9" fill="{fg}">{label}</text>'
         )
 
     # Cellules
     for wi, week in enumerate(weeks):
         days = week.get("contributionDays", week) if isinstance(week, dict) else week
         for day in days:
-            day_date, count, color = _parse_day(day)
+            day_date, count, color = _parse_day(day, palette, keep_api)
             # ligne = weekday GitHub (dimanche=0) ; fromisoformat.weekday() lundi=0
             row = (day_date.weekday() + 1) % 7
             x = GUTTER_W + wi * PITCH
             y = MONTH_H + row * PITCH
             tip = escape(tooltip(day_date, count))
-            parts.append(
-                f'<rect x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="{RX}" '
-                f'fill="{color}" data-date="{day_date.isoformat()}" '
-                f'data-count="{count}"><title>{tip}</title></rect>'
-            )
+            if animate == "wave":
+                delay = wi * WAVE_DELAY_COL + row * WAVE_DELAY_ROW
+                parts.append(
+                    f'<rect x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="{RX}" '
+                    f'fill="{color}" class="cell-wave" '
+                    f'style="--orig:{color};animation-delay:{delay}ms" '
+                    f'data-date="{day_date.isoformat()}" '
+                    f'data-count="{count}"><title>{tip}</title></rect>'
+                )
+            else:
+                parts.append(
+                    f'<rect x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="{RX}" '
+                    f'fill="{color}" data-date="{day_date.isoformat()}" '
+                    f'data-count="{count}"><title>{tip}</title></rect>'
+                )
 
     # Legende Less + 5 niveaux + More
     ly = MONTH_H + grid_h + 6
     lx = width - (4 * len("Less More") + 5 * PITCH + 30)
     lx = max(GUTTER_W, lx)
     parts.append(
-        f'<text x="{lx}" y="{ly + 9}" font-size="10" fill="#1f2328">Less</text>'
+        f'<text x="{lx}" y="{ly + 9}" font-size="10" fill="{fg}">Less</text>'
     )
     lx += 30
     for level in ["NONE", "FIRST_QUARTILE", "SECOND_QUARTILE",
                   "THIRD_QUARTILE", "FOURTH_QUARTILE"]:
         parts.append(
             f'<rect x="{lx}" y="{ly}" width="{CELL}" height="{CELL}" '
-            f'rx="{RX}" fill="{PALETTE[level]}"/>'
+            f'rx="{RX}" fill="{palette[level]}"/>'
         )
         lx += PITCH
     parts.append(
-        f'<text x="{lx}" y="{ly + 9}" font-size="10" fill="#1f2328">More</text>'
+        f'<text x="{lx}" y="{ly + 9}" font-size="10" fill="{fg}">More</text>'
     )
 
     parts.append("</svg>")

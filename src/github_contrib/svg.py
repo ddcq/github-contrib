@@ -268,52 +268,61 @@ def _wave_frame(i, reflect, scale, dy, rotate, marks):
     )
 
 
-def _overlay_frame(i, scale, dy, rotate, marks):
-    """Un @keyframes wave{i} pour overlay multi-vagues (pic opacite)."""
-    p0, p1, p2 = (f"{m:g}%" for m in marks)
+def _cell_frame(idx, stops):
+    """Un @keyframes cell{idx} multi-vagues (pics tranches sur la case)."""
+    return f"@keyframes cell{idx}{{{''.join(stops)}}}"
+
+
+def _stop(pct, fill, scale, dy, rotate, peak):
     rest = "" if (scale == 1 and dy == 0 and rotate == 0) else \
         "transform:scale(1) translateY(0) rotate(0deg);"
-    peak = "" if (scale == 1 and dy == 0 and rotate == 0) else \
+    peak_t = "" if (scale == 1 and dy == 0 and rotate == 0) else \
         f"transform:scale({scale:g}) translateY({dy}px) rotate({rotate}deg);"
-    return (
-        f"@keyframes wave{i}{{0%,{p0}{{opacity:0;{rest}}}"
-        f"{p1}{{opacity:1;{peak}}}"
-        f"{p2},100%{{opacity:0;{rest}}}}}"
-    )
+    return f"{pct:g}%{{fill:{fill};{peak_t if peak else rest}}}"
 
 
-def waves_css(waves, palette):
-    """Bloc <style> : animations vague.
+def waves_css(waves, palette, n_weeks=0):
+    """Bloc <style> : animations vague sur les cases elles-memes.
 
-    1 vague : anime fill direct (look legacy). N vagues : base statique +
-    1 overlay/vague anime en opacite (N animations fill sur meme element
-    se recouvrent : seule la derniere serait visible).
-    Cycle total boucle sum(durations+gaps), chaque vague occupe sa tranche.
+    1 vague : anime fill direct (look legacy). N vagues : 1 @keyframes
+    cell{idx} par case, tranches sequentielles bouclees (N animations
+    fill sur meme element se recouvrent : seule la derniere serait
+    visible, d'ou un seul keyframes par case).
+    Cycle total boucle sum(durations+gaps). Direction multi = normal.
     """
-    names = []
-    frames = []
     if len(waves) == 1:
         wave = waves[0]
         reflect = wave.color or palette["FOURTH_QUARTILE"]
-        names.append(f"wave0 {wave.duration:g}s {wave.direction} infinite")
-        frames.append(_wave_frame(0, reflect, wave.scale, wave.dy,
-                                 wave.rotate, None))
+        head = (f".cell-wave{{animation:wave0 {wave.duration:g}s "
+                f"{wave.direction} infinite;"
+                "transform-box:fill-box;transform-origin:center;}")
+        frames = [_wave_frame(0, reflect, wave.scale, wave.dy,
+                              wave.rotate, None)]
     else:
         total = sum((w.duration + w.gap) * 1000 for w in waves)
         offsets = wave_offsets(waves)
-        for i, wave in enumerate(waves):
-            names.append(f"wave{i} {total / 1000:g}s {wave.direction} infinite")
-            off = offsets[i]
-            marks = (off / total * 100,
-                     (off + wave.duration * 500) / total * 100,
-                     (off + wave.duration * 1000) / total * 100)
-            frames.append(_overlay_frame(i, wave.scale, wave.dy,
-                                        wave.rotate, marks))
+        grids = [wave_delays(w, n_weeks) for w in waves]
+        head = ".cell-wave{transform-box:fill-box;transform-origin:center;}"
+        frames = []
+        for wi in range(n_weeks):
+            for row in range(7):
+                idx = wi * 7 + row
+                stops = [_stop(0, "var(--orig)", 1, 0, 0, False)]
+                for i, wave in enumerate(waves):
+                    reflect = wave.color or palette["FOURTH_QUARTILE"]
+                    base = offsets[i] + grids[i][(wi, row)]
+                    stops.append(_stop(base / total * 100, "var(--orig)",
+                                       wave.scale, wave.dy, wave.rotate, False))
+                    stops.append(_stop((base + wave.duration * 500) / total * 100,
+                                       reflect, wave.scale, wave.dy,
+                                       wave.rotate, True))
+                    stops.append(_stop((base + wave.duration * 1000) / total * 100,
+                                       "var(--orig)", wave.scale, wave.dy,
+                                       wave.rotate, False))
+                stops.append(_stop(100, "var(--orig)", 1, 0, 0, False))
+                frames.append(_cell_frame(idx, stops))
     return (
-        "<style>"
-        f".cell-wave{{animation:{','.join(names)};"
-        "transform-box:fill-box;transform-origin:center;}"
-        + "".join(frames) +
+        "<style>" + head + "".join(frames) +
         "@media (prefers-reduced-motion: reduce){.cell-wave{animation:none;}}"
         "</style>"
     )
@@ -350,8 +359,7 @@ def calendar_to_svg(weeks, animate="wave", theme="dark-green", waves=None):
     ]
 
     if animate == "wave":
-        parts.append(waves_css(wave_list, palette))
-        delay_grids = [wave_delays(w, n_weeks) for w in wave_list]
+        parts.append(waves_css(wave_list, palette, n_weeks))
         multi = len(wave_list) > 1
         total_s = sum((w.duration + w.gap) for w in wave_list) if multi else 0
 
@@ -393,33 +401,25 @@ def calendar_to_svg(weeks, animate="wave", theme="dark-green", waves=None):
             y = MONTH_H + row * PITCH
             tip = escape(tooltip(day_date, count))
             if animate == "wave" and not multi:
-                delays = ",".join(
-                    f"{delay_grids[i][(wi, row)]:g}ms"
-                    for i in range(len(wave_list))
-                )
+                wave = wave_list[0]
+                delay = wave_delays(wave, n_weeks)[(wi, row)]
                 parts.append(
                     f'<rect x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="{RX}" '
                     f'fill="{color}" class="cell-wave" '
-                    f'style="--orig:{color};animation-delay:{delays}" '
+                    f'style="--orig:{color};animation-delay:{delay:g}ms" '
                     f'data-date="{day_date.isoformat()}" '
                     f'data-count="{count}"><title>{tip}</title></rect>'
                 )
             elif animate == "wave":
+                idx = wi * 7 + row
                 parts.append(
                     f'<rect x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="{RX}" '
-                    f'fill="{color}" data-date="{day_date.isoformat()}" '
+                    f'fill="{color}" class="cell-wave" '
+                    f'style="--orig:{color};animation:cell{idx} {total_s:g}s '
+                    f'normal infinite" '
+                    f'data-date="{day_date.isoformat()}" '
                     f'data-count="{count}"><title>{tip}</title></rect>'
                 )
-                for i, wave in enumerate(wave_list):
-                    reflect = wave.color or palette["FOURTH_QUARTILE"]
-                    d = delay_grids[i][(wi, row)]
-                    parts.append(
-                        f'<rect x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="{RX}" '
-                        f'fill="{reflect}" opacity="0" class="cell-wave" '
-                        f'pointer-events="none" '
-                        f'style="animation:wave{i} {total_s:g}s {wave.direction} infinite;'
-                        f'animation-delay:{d:g}ms"/>'
-                    )
             else:
                 parts.append(
                     f'<rect x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="{RX}" '

@@ -67,7 +67,8 @@ Règle couleur cases :
 CSS pur, sans JS (compatible `<img>` README).
 
 - 1 vague : `fill` case animé direct (look legacy).
-- N vagues : base statique + 1 overlay opaque-0 par vague animé en `opacity` (N animations `fill` sur même élément se recouvrent : seule la dernière serait visible).
+- N vagues : 1 `@keyframes cell{idx}` par case sur l'élément contribution lui-même, tranches séquentielles bouclées (N animations `fill` partagées se recouvrent : seule la dernière serait visible). Pics exacts par case : délai forme intégré aux pourcentages.
+- `direction` honored 1 vague ; multi toujours `normal`.
 - `animation-delay` inline par case = délai forme (`invert` inclus).
 
 - Chaînage séquentiel en boucle : cycle total = somme durations+gaps, chaque vague occupe sa tranche puis boucle vers la première. `gap` = pause entre vagues (ex. config `waves.json` : cycle 35.5s).

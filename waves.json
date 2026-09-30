@@ -2,9 +2,9 @@
   "waves": [
     "diagonal",
     "radial(invert=true,color=#26a641,duration=3.5,gap=1.5,scale=1.2,rotate=90)",
-    "sine(color=#56d364,duration=5,gap=1,scale=1.4,dy=-8,amp=200,rotate=-90)",
-    "linear(invert=true,color=#26a641,duration=4,gap=2.5,direction=alternate)",
-    "diagonal(invert=true,color=#7ee787,duration=4,gap=1.5,scale=1.2,dy=0,rotate=180)",
-    "radial(cx=0,cy=0,color=#56d364,duration=3,gap=2,scale=0.1,rotate=360)"
+    "sine(color=#116329,duration=5,gap=1,scale=0.4,dy=-8,amp=200,rotate=-90)",
+    "linear(invert=true,color=#2da44e,duration=4,gap=2.5,direction=alternate)",
+    "diagonal(invert=true,color=#4ac26b,duration=4,gap=1.5,scale=0.9,dy=0,rotate=180)",
+    "radial(cx=2,cy=30,color=#aceebb,duration=3,gap=2,scale=0.1,rotate=360)"
   ]
 }

@@ -214,29 +214,30 @@ def test_wave_invert_mirrors():
 
 def test_wave_chain_offsets():
     waves = [svg.parse_wave_spec("diagonal(duration=4)"),
-             svg.parse_wave_spec("radial(duration=3,gap=2)")]
+             svg.parse_wave_spec("diagonal(duration=3,gap=2,invert=true)")]
     assert svg.wave_offsets(waves) == [0, 5000.0]
     out = svg.calendar_to_svg(_weeks(), animate="wave", theme="blue",
                               waves=waves)
-    # cycle total boucle : 5s + 5s = 10s, tranches 0-40% puis 50-80%
-    assert "@keyframes wave0" in out
-    assert "@keyframes wave1" in out
-    assert "wave0 10s normal infinite" in out
-    assert "wave1 10s normal infinite" in out
+    # cycle total boucle : 5s + 5s = 10s, tranches 0-40% puis 50-80%,
+    # 1 keyframes par case sur l'element contribution lui-meme.
+    # case (0,0) : vague0 pic a 20%, vague1 (delai inverse 425ms) a 54.25%
+    assert "@keyframes cell0" in out
+    assert "animation:cell1 10s normal infinite" in out
     assert "20%" in out
-    assert "50%" in out
-    assert "65%" in out
-    assert "80%" in out
-    # overlays opacite : base + 1 rect/vague, pas de fill anime partage
-    assert "opacity:1" in out
-    assert out.count('pointer-events="none"') == out.count("<title>") * 2
+    assert "40%" in out
+    assert "54.25%" in out
+    assert "opacity" not in out.split("</style>")[0]
+    assert 'pointer-events="none"' not in out
 
 
 def test_wave_chain_all_visible():
-    # non-regression : chaque vague rend son overlay (avant, seule la
-    # derniere animation fill etait visible)
+    # non-regression : chaque vague rend son pic sur la case (avant,
+    # overlays separes au lieu d'effets sur cases contributions)
     out = svg.calendar_to_svg(_weeks(), animate="wave", theme="blue",
                               waves=["diagonal(color=#ff0000)",
                                      "radial(color=#0000ff)"])
-    assert 'fill="#ff0000" opacity="0"' in out
-    assert 'fill="#0000ff" opacity="0"' in out
+    assert "@keyframes cell0" in out
+    assert "#ff0000" in out.split("</style>")[0]
+    assert "#0000ff" in out.split("</style>")[0]
+    # 1 rect par case (3 jours) + 5 legende, zero overlay
+    assert out.count("<rect") == out.count("<title>") + 5

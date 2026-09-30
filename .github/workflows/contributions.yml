@@ -11,6 +11,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    env:
+      BOT_BRANCH: bot/refresh-contributions
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -20,10 +22,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.CONTRIB_PAT || github.token }}
         run: PYTHONPATH=src python -m github_contrib --login ddcq --out contributions.svg
-      - name: Commit SVG
+      - name: Commit SVG to branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BOT_BRANCH"
           git add contributions.svg contributions-blue.svg contributions-dark-blue.svg contributions-red.svg contributions-dark-red.svg
           git diff --cached --quiet || git commit -m "chore: refresh contributions.svg"
-          git push
+          git push -u origin "$BOT_BRANCH"

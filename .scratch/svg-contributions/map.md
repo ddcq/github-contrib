@@ -15,6 +15,7 @@ Spécification phase 1 prête à implémenter : script Python qui interroge Grap
 
 - [Rendu calendrier GitHub exact](.scratch/svg-contributions/issues/02-github-calendar-render.md): palette Primer light + cellules 10px gap 3px + labels/tooltips/legende verrouilles.
 - [Shape GraphQL ContributionsCollection](.scratch/svg-contributions/issues/01-graphql-contributions-shape.md): query minimale + levels relatifs + scope read:user avec fallback public.
+- [Échantillon réel + token](.scratch/svg-contributions/issues/03-sample-data-token.md): fetch live ddcq OK, total 680 sur 53 semaines, SVG 368 jours généré.
 
 ## Not yet specified
 

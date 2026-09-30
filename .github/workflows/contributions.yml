@@ -21,7 +21,7 @@ jobs:
       - name: Generate SVG
         env:
           GITHUB_TOKEN: ${{ secrets.CONTRIB_PAT || github.token }}
-        run: PYTHONPATH=src python -m github_contrib --login ddcq --out contributions.svg
+        run: PYTHONPATH=src python -m github_contrib --login ddcq --out contributions.svg --waves-file waves.json
       - name: Commit SVG to branch
         run: |
           git config user.name "github-actions[bot]"

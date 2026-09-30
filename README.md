@@ -137,7 +137,7 @@ PYTHONPATH=src python3 -m github_contrib --login ddcq --out contributions.svg
 
 ## Automation
 
-Action `contributions` : schedule `0 6 * * *` + `workflow_dispatch`, `runs-on: ubuntu-24.04`, `actions/checkout@v6` + `actions/setup-python@v6` (runtime Node24). Génère les 6 SVG puis commit sur branche `bot/refresh-contributions` (jamais `main` direct) : merge manuel vers `main` après contrôle.
+Action `contributions` : schedule `0 6 * * *` + `workflow_dispatch`, `runs-on: ubuntu-24.04`, `actions/checkout@v6` + `actions/setup-python@v6` (runtime Node24). Génère les 6 SVG avec `--waves-file waves.json` (config versionnée : diagonale, radiale inversée, poisson, linéaire inversée) puis commit sur branche `bot/refresh-contributions` (jamais `main` direct) : merge manuel vers `main` après contrôle.
 
 - Token : `github.token` par défaut (publiques). Privées incluses via secret `CONTRIB_PAT` (classic, scope `read:user`).
 - Mise en route : `git push -u origin main`, puis onglet Actions.

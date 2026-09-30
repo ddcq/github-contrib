@@ -1,0 +1,8 @@
+{
+  "waves": [
+    "diagonal",
+    "radial(invert=true,color=#26a641,duration=3.5,gap=0.5,scale=1.2)",
+    "sine(color=#56d364,duration=5,gap=1,scale=1.4,dy=-8,amp=200)",
+    "linear(invert=true,color=#26a641,duration=4,gap=1.5,direction=alternate)"
+  ]
+}

@@ -163,6 +163,20 @@ def test_wave_zoom_lift_optional():
     assert "translateY(-8px)" in custom
 
 
+def test_wave_rotate():
+    out = svg.calendar_to_svg(_weeks(), animate="wave", theme="blue",
+                              waves=["diagonal(rotate=90)"])
+    assert "rotate(90deg)" in out
+    out_neg = svg.calendar_to_svg(_weeks(), animate="wave", theme="blue",
+                                  waves=["sine(rotate=-270)"])
+    assert "rotate(-270deg)" in out_neg
+    try:
+        svg.parse_wave_spec("diagonal(rotate=45)")
+        raise SystemExit("should raise")
+    except ValueError:
+        pass
+
+
 def test_wave_dsl_parse():
     w = svg.parse_wave_spec("diagonal(color=#ff0000,scale=1.5,invert=true)")
     assert w.shape == "diagonal"
@@ -204,6 +218,25 @@ def test_wave_chain_offsets():
     assert svg.wave_offsets(waves) == [0, 5000.0]
     out = svg.calendar_to_svg(_weeks(), animate="wave", theme="blue",
                               waves=waves)
+    # cycle total boucle : 5s + 5s = 10s, tranches 0-40% puis 50-80%
     assert "@keyframes wave0" in out
     assert "@keyframes wave1" in out
-    assert "wave0 4s normal infinite,wave1 3s normal infinite" in out
+    assert "wave0 10s normal infinite" in out
+    assert "wave1 10s normal infinite" in out
+    assert "20%" in out
+    assert "50%" in out
+    assert "65%" in out
+    assert "80%" in out
+    # overlays opacite : base + 1 rect/vague, pas de fill anime partage
+    assert "opacity:1" in out
+    assert out.count('pointer-events="none"') == out.count("<title>") * 2
+
+
+def test_wave_chain_all_visible():
+    # non-regression : chaque vague rend son overlay (avant, seule la
+    # derniere animation fill etait visible)
+    out = svg.calendar_to_svg(_weeks(), animate="wave", theme="blue",
+                              waves=["diagonal(color=#ff0000)",
+                                     "radial(color=#0000ff)"])
+    assert 'fill="#ff0000" opacity="0"' in out
+    assert 'fill="#0000ff" opacity="0"' in out

@@ -64,9 +64,14 @@ Règle couleur cases :
 
 ## Animation vagues (moteur v2)
 
-CSS pur, sans JS (compatible `<img>` README) : 1 `@keyframes wave{i}` par vague + `animation-delay` inline par case.
+CSS pur, sans JS (compatible `<img>` README).
 
-- Chaînage séquentiel : `--wave` répétable, offset vague N = somme durations+gaps précédentes.
+- 1 vague : `fill` case animé direct (look legacy).
+- N vagues : base statique + 1 overlay opaque-0 par vague animé en `opacity` (N animations `fill` sur même élément se recouvrent : seule la dernière serait visible).
+- `animation-delay` inline par case = délai forme (`invert` inclus).
+
+- Chaînage séquentiel en boucle : cycle total = somme durations+gaps, chaque vague occupe sa tranche puis boucle vers la première. `gap` = pause entre vagues (ex. config `waves.json` : cycle 35.5s).
+- Keyframes par vague : tranche `[offset, offset+duration]`, pic à mi-tranche. 1 seule vague = look legacy (flash 7%/14%).
 - Keyframes par vague : `0%,14%,100%` = couleur origine, `7%` = reflet. Durée propre par vague (`duration`, défaut `4.5s`), `gap` après vague (défaut `1.0s`).
 - `invert=true` = miroir délai (vague inverse), `direction` CSS séparé (`normal`, défaut).
 - `prefers-reduced-motion: reduce` → animation coupée. Légende exclue, grille seule.
@@ -88,6 +93,7 @@ CSS pur, sans JS (compatible `<img>` README) : 1 `@keyframes wave{i}` par vague 
 | `color` | max thème (`FOURTH_QUARTILE`) | reflet vague, ex. `color=#ff0000` |
 | `scale` | `1.3` | zoom case au pic, `1` = désactive |
 | `dy` | `-5` | translation Y px au pic, `0` = désactive |
+| `rotate` | `0` | rotation degrés au pic : `90`, `-90`, `180`, `-180`, `270`, `-270`, `360`, `-360` (`0` = désactive) |
 | `duration` | `4.5` | secondes par cycle vague |
 | `gap` | `1.0` | pause secondes après vague |
 | `invert` | `false` | miroir sens propagation |
@@ -107,9 +113,9 @@ PYTHONPATH=src python3 -m github_contrib --theme blue --out /tmp/blue.svg --no-f
 PYTHONPATH=src python3 -m github_contrib --theme blue --out /tmp/chain.svg --no-fetch \
   --wave "diagonal(color=#0a3069)" --wave "radial(invert=true,duration=3)"
 
-# poisson bleu, zoom fort
+# poisson bleu, zoom fort + rotation 90° horaire
 PYTHONPATH=src python3 -m github_contrib --theme blue --out /tmp/fish.svg --no-fetch \
-  --wave "sine(color=#0a3069,scale=1.5,amp=200)"
+  --wave "sine(color=#0a3069,scale=1.5,amp=200,rotate=90)"
 
 # fichier JSON (même modèle, versionnable)
 echo '{"waves": ["diagonal", "radial(invert=true,duration=3)"]}' > /tmp/waves.json
@@ -137,7 +143,7 @@ PYTHONPATH=src python3 -m github_contrib --login ddcq --out contributions.svg
 
 ## Automation
 
-Action `contributions` : schedule `0 6 * * *` + `workflow_dispatch`, `runs-on: ubuntu-24.04`, `actions/checkout@v6` + `actions/setup-python@v6` (runtime Node24). Génère les 6 SVG avec `--waves-file waves.json` (config versionnée : diagonale, radiale inversée, poisson, linéaire inversée) puis commit sur branche `bot/refresh-contributions` (jamais `main` direct) : merge manuel vers `main` après contrôle.
+Action `contributions` : schedule `0 6 * * *` + `workflow_dispatch`, `runs-on: ubuntu-24.04`, `actions/checkout@v6` + `actions/setup-python@v6` (runtime Node24). Génère les 6 SVG avec `--waves-file waves.json` (config versionnée : diagonale, radiale inversée +90°, poisson -90°, linéaire inversée alternate, diagonale inversée 180°, burst coin 360°) puis commit sur branche `bot/refresh-contributions` (jamais `main` direct) : merge manuel vers `main` après contrôle.
 
 - Token : `github.token` par défaut (publiques). Privées incluses via secret `CONTRIB_PAT` (classic, scope `read:user`).
 - Mise en route : `git push -u origin main`, puis onglet Actions.

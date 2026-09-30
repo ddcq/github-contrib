@@ -17,13 +17,11 @@ def build_parser():
 
 
 def main(argv=None):
-    import os
-
-    from .fetch import fetch_calendar, load_cache, save_cache
+    from .fetch import fetch_calendar, load_cache, resolve_token, save_cache
     from .svg import calendar_to_svg
 
     args = build_parser().parse_args(argv)
-    token = args.token or os.environ.get("GITHUB_TOKEN")
+    token = resolve_token(args.token)
 
     if args.no_fetch or not token:
         collection = load_cache(args.cache)

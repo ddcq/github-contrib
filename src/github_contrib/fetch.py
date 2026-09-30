@@ -40,11 +40,18 @@ def _ssl_context():
         return ssl.create_default_context()
 
 
+def resolve_token(explicit=None):
+    """Priorité : --token > GITHUB_TOKEN > GITHUB_DDCQ_READ."""
+    if explicit:
+        return explicit
+    return os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_DDCQ_READ")
+
+
 def fetch_calendar(login, from_iso=None, to_iso=None, token=None):
     """Interroge l'API GraphQL et retourne le dict contributionsCollection."""
-    token = token or os.environ.get("GITHUB_TOKEN")
+    token = resolve_token(token)
     if not token:
-        raise RuntimeError("GITHUB_TOKEN manquant (env ou param token)")
+        raise RuntimeError("Token manquant (--token, GITHUB_TOKEN ou GITHUB_DDCQ_READ)")
     variables = {"login": login, "from": from_iso, "to": to_iso}
     body = json.dumps({"query": QUERY, "variables": variables}).encode()
     req = urllib.request.Request(

@@ -1,0 +1,29 @@
+name: contributions
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Generate SVG
+        env:
+          GITHUB_TOKEN: ${{ secrets.CONTRIB_PAT || github.token }}
+        run: PYTHONPATH=src python -m github_contrib --login ddcq --out contributions.svg
+      - name: Commit SVG
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add contributions.svg
+          git diff --cached --quiet || git commit -m "chore: refresh contributions.svg"
+          git push

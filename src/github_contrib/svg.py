@@ -135,12 +135,26 @@ WAVE_DURATION = "4.5s"
 WAVE_DELAY_COL = 35
 WAVE_DELAY_ROW = 65
 
-def wave_css(reflect):
-    return (
+def wave_css(reflect, scale=1.3, dy=-5):
+    base = (
         "<style>"
-        ".cell-wave{animation:wave " + WAVE_DURATION + " infinite;}"
-        "@keyframes wave{0%,14%,100%{fill:var(--orig);}"
-        "7%{fill:" + reflect + ";}}"
+        ".cell-wave{animation:wave " + WAVE_DURATION + " infinite;"
+        "transform-box:fill-box;transform-origin:center;}"
+    )
+    if scale == 1 and dy == 0:
+        return (
+            base
+            + "@keyframes wave{0%,14%,100%{fill:var(--orig);}"
+            "7%{fill:" + reflect + ";}}"
+            "@media (prefers-reduced-motion: reduce){.cell-wave{animation:none;}}"
+            "</style>"
+        )
+    return (
+        base
+        + "@keyframes wave{0%,14%,100%{fill:var(--orig);"
+        "transform:scale(1) translateY(0);}"
+        "7%{fill:" + reflect + ";"
+        f"transform:scale({scale:g}) translateY({dy}px);}}"
         "@media (prefers-reduced-motion: reduce){.cell-wave{animation:none;}}"
         "</style>"
     )
@@ -149,10 +163,11 @@ def wave_css(reflect):
 WAVE_CSS = wave_css(WAVE_REFLECT)
 
 
-def calendar_to_svg(weeks, animate="wave", theme="dark-green"):
+def calendar_to_svg(weeks, animate="wave", theme="dark-green",
+                    wave_color=None, wave_scale=1.3, wave_dy=-5):
     """Convertit weeks (liste de {contributionDays:[...]}) en str SVG."""
     palette = THEMES.get(theme, THEMES["dark-green"])
-    reflect = palette["FOURTH_QUARTILE"]
+    reflect = wave_color or palette["FOURTH_QUARTILE"]
     bg = THEME_BG.get(theme)
     fg = THEME_FG.get(theme, "#1f2328")
     # Legacy dark-green garde couleur API pour compat byte-identique Phase1.
@@ -171,7 +186,7 @@ def calendar_to_svg(weeks, animate="wave", theme="dark-green"):
     ]
 
     if animate == "wave":
-        parts.append(wave_css(reflect))
+        parts.append(wave_css(reflect, wave_scale, wave_dy))
 
     if bg:
         parts.append(f'<rect width="{width}" height="{height}" fill="{bg}"/>')

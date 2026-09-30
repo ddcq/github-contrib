@@ -34,6 +34,9 @@ def test_wave_injects_style_once():
     assert "@keyframes wave" in out
     assert "prefers-reduced-motion" in out
     assert svg.WAVE_REFLECT in out
+    assert "scale(1.3)" in out
+    assert "translateY(-5px)" in out
+    assert "transform-box:fill-box" in out
 
 
 def test_wave_delay_diagonal():
@@ -127,3 +130,22 @@ def test_light_themes_no_bg():
     out = svg.calendar_to_svg(_weeks(), animate="none", theme="blue")
     assert "#0d1117" not in out
     assert 'fill="#1f2328"' in out
+
+
+def test_wave_custom_color():
+    out = svg.calendar_to_svg(_weeks(), animate="wave", theme="blue",
+                              wave_color="#ff0000")
+    assert "#ff0000" in out
+    assert svg.THEMES["blue"]["FOURTH_QUARTILE"] not in out.split("<style>")[1].split("</style>")[0]
+
+
+def test_wave_zoom_lift_optional():
+    plain = svg.calendar_to_svg(_weeks(), animate="wave", theme="blue",
+                                wave_scale=1, wave_dy=0)
+    assert "scale(1.3)" not in plain
+    assert "translateY(-5px)" not in plain
+    assert "@keyframes wave" in plain
+    custom = svg.calendar_to_svg(_weeks(), animate="wave", theme="blue",
+                                 wave_scale=1.5, wave_dy=-8)
+    assert "scale(1.5)" in custom
+    assert "translateY(-8px)" in custom

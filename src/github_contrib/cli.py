@@ -17,6 +17,12 @@ def build_parser():
                    choices=["all", "dark-green", "blue", "dark-blue",
                             "red", "dark-red"],
                    help="Theme couleur : un seul theme ou all (defaut, tous themes)")
+    p.add_argument("--wave-color", default=None, metavar="#RRGGBB",
+                   help="Couleur vague (defaut : max du theme, ex. #116329)")
+    p.add_argument("--wave-scale", type=float, default=1.3,
+                   help="Zoom case au pic vague (defaut 1.3, 1 = desactive)")
+    p.add_argument("--wave-dy", type=int, default=-5,
+                   help="Translation Y px au pic vague (defaut -5, 0 = desactive)")
     p.add_argument("--no-fetch", action="store_true",
                    help="Utilise uniquement le cache local (pas d'appel API)")
     return p
@@ -52,7 +58,10 @@ def main(argv=None):
     weeks = collection["contributionCalendar"]["weeks"]
     total = collection["contributionCalendar"].get("totalContributions")
     for name, path in theme_outputs(args.out, args.theme):
-        svg = calendar_to_svg(weeks, animate=args.animate, theme=name)
+        svg = calendar_to_svg(weeks, animate=args.animate, theme=name,
+                              wave_color=args.wave_color,
+                              wave_scale=args.wave_scale,
+                              wave_dy=args.wave_dy)
         with open(path, "w", encoding="utf-8") as f:
             f.write(svg)
         print(f"OK: {len(weeks)} semaines, total={total}, theme={name} -> {path}")

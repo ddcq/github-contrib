@@ -1,5 +1,5 @@
 Type: research
-Status: closed
+Status: resolved
 Blocked by:
 
 ## Question

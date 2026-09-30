@@ -13,6 +13,9 @@ Spécification phase 1 prête à implémenter : script Python qui interroge Grap
 
 <!-- index : une ligne par ticket clos, gist + lien -->
 
+- [Rendu calendrier GitHub exact](.scratch/svg-contributions/issues/02-github-calendar-render.md): palette Primer light + cellules 10px gap 3px + labels/tooltips/legende verrouilles.
+- [Shape GraphQL ContributionsCollection](.scratch/svg-contributions/issues/01-graphql-contributions-shape.md): query minimale + levels relatifs + scope read:user avec fallback public.
+
 ## Not yet specified
 
 - Seuils exacts des 5 niveaux de verts vs comptes (dépend du rendu GitHub réel).

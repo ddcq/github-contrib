@@ -1,32 +1,8 @@
 """Fetch GraphQL ContributionsCollection + cache JSON (stdlib only)."""
 
-QUERY = """
-query($login: String! $from: DateTime $to: DateTime) {
-  user(login: $login) {
-    contributionsCollection(from: $from to: $to) {
-      contributionCalendar {
-        totalContributions
-        weeks {
-          contributionDays {
-            date
-            contributionCount
-            contributionLevel
-            color
-          }
-        }
-      }
-      restrictedContributionsCount
-      hasAnyRestrictedContributions
-    }
-  }
-}
-"""
-
-
-"""Fetch GraphQL ContributionsCollection + cache JSON (stdlib only)."""
-
 import json
 import os
+import ssl
 import urllib.request
 
 API_URL = "https://api.github.com/graphql"
@@ -54,6 +30,16 @@ query($login: String! $from: DateTime $to: DateTime) {
 """
 
 
+def _ssl_context():
+    """Contexte SSL avec bundle certifi si dispo (Python.org macOS)."""
+    try:
+        import certifi
+
+        return ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        return ssl.create_default_context()
+
+
 def fetch_calendar(login, from_iso=None, to_iso=None, token=None):
     """Interroge l'API GraphQL et retourne le dict contributionsCollection."""
     token = token or os.environ.get("GITHUB_TOKEN")
@@ -70,7 +56,7 @@ def fetch_calendar(login, from_iso=None, to_iso=None, token=None):
             "User-Agent": "github-contrib",
         },
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
+    with urllib.request.urlopen(req, timeout=30, context=_ssl_context()) as resp:
         payload = json.load(resp)
     if "errors" in payload:
         raise RuntimeError(f"GraphQL errors: {payload['errors']}")

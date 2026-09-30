@@ -17,12 +17,12 @@ def build_parser():
                    choices=["all", "dark-green", "blue", "dark-blue",
                             "red", "dark-red"],
                    help="Theme couleur : un seul theme ou all (defaut, tous themes)")
-    p.add_argument("--wave-color", default=None, metavar="#RRGGBB",
-                   help="Couleur vague (defaut : max du theme, ex. #116329)")
-    p.add_argument("--wave-scale", type=float, default=1.3,
-                   help="Zoom case au pic vague (defaut 1.3, 1 = desactive)")
-    p.add_argument("--wave-dy", type=int, default=-5,
-                   help="Translation Y px au pic vague (defaut -5, 0 = desactive)")
+    p.add_argument("--wave", action="append", default=None, metavar="SPEC",
+                   help="Vague DSL, repetable pour chainage : "
+                        "linear|diagonal|radial|sine(k=v,...). "
+                        "Ex. diagonal(color=#116329,scale=1.3,dy=-5)")
+    p.add_argument("--waves-file", default=None, metavar="JSON",
+                   help='Fichier {"waves": ["diagonal", "radial(invert=true)"]}')
     p.add_argument("--no-fetch", action="store_true",
                    help="Utilise uniquement le cache local (pas d'appel API)")
     return p
@@ -41,6 +41,20 @@ def theme_outputs(base_out, theme):
     return outs
 
 
+def load_waves(args):
+    """Combine --waves-file puis --wave (ordre donne). Defaut [diagonal]."""
+    import json
+    from .svg import parse_wave_spec
+    specs = []
+    if args.waves_file:
+        with open(args.waves_file, encoding="utf-8") as f:
+            data = json.load(f)
+        specs.extend(data.get("waves", data if isinstance(data, list) else []))
+    if args.wave:
+        specs.extend(args.wave)
+    return [parse_wave_spec(s) for s in specs] or None
+
+
 def main(argv=None):
     from .fetch import fetch_calendar, load_cache, resolve_token, save_cache
     from .svg import THEME_NAMES, calendar_to_svg
@@ -57,11 +71,10 @@ def main(argv=None):
 
     weeks = collection["contributionCalendar"]["weeks"]
     total = collection["contributionCalendar"].get("totalContributions")
+    waves = load_waves(args)
     for name, path in theme_outputs(args.out, args.theme):
         svg = calendar_to_svg(weeks, animate=args.animate, theme=name,
-                              wave_color=args.wave_color,
-                              wave_scale=args.wave_scale,
-                              wave_dy=args.wave_dy)
+                              waves=waves)
         with open(path, "w", encoding="utf-8") as f:
             f.write(svg)
         print(f"OK: {len(weeks)} semaines, total={total}, theme={name} -> {path}")

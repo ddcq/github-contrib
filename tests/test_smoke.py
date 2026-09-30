@@ -31,7 +31,7 @@ def test_none_matches_legacy_static():
 def test_wave_injects_style_once():
     out = svg.calendar_to_svg(_weeks(), animate="wave")
     assert out.count("<style>") == 1
-    assert "@keyframes wave" in out
+    assert "@keyframes wave0" in out
     assert "prefers-reduced-motion" in out
     assert svg.WAVE_REFLECT in out
     assert "scale(1.3)" in out
@@ -134,18 +134,64 @@ def test_light_themes_no_bg():
 
 def test_wave_custom_color():
     out = svg.calendar_to_svg(_weeks(), animate="wave", theme="blue",
-                              wave_color="#ff0000")
+                              waves=["diagonal(color=#ff0000)"])
     assert "#ff0000" in out
     assert svg.THEMES["blue"]["FOURTH_QUARTILE"] not in out.split("<style>")[1].split("</style>")[0]
 
 
 def test_wave_zoom_lift_optional():
     plain = svg.calendar_to_svg(_weeks(), animate="wave", theme="blue",
-                                wave_scale=1, wave_dy=0)
+                                waves=["diagonal(scale=1,dy=0)"])
     assert "scale(1.3)" not in plain
     assert "translateY(-5px)" not in plain
-    assert "@keyframes wave" in plain
+    assert "@keyframes wave0" in plain
     custom = svg.calendar_to_svg(_weeks(), animate="wave", theme="blue",
-                                 wave_scale=1.5, wave_dy=-8)
+                                 waves=["diagonal(scale=1.5,dy=-8)"])
     assert "scale(1.5)" in custom
     assert "translateY(-8px)" in custom
+
+
+def test_wave_dsl_parse():
+    w = svg.parse_wave_spec("diagonal(color=#ff0000,scale=1.5,invert=true)")
+    assert w.shape == "diagonal"
+    assert w.color == "#ff0000"
+    assert w.scale == 1.5
+    assert w.invert is True
+    w2 = svg.parse_wave_spec("radial")
+    assert w2.shape == "radial"
+    try:
+        svg.parse_wave_spec("nope")
+        raise SystemExit("should raise")
+    except ValueError:
+        pass
+
+
+def test_wave_shapes_delay():
+    d_lin = svg.wave_delays(svg.WaveSpec("linear", params={"step": 80}), 3)
+    assert d_lin[(0, 0)] == 0
+    assert d_lin[(2, 0)] == 160
+    assert d_lin[(2, 3)] == 160
+    d_diag = svg.wave_delays(svg.WaveSpec("diagonal"), 3)
+    assert d_diag[(0, 1)] == 65
+    assert d_diag[(1, 1)] == 100
+    d_rad = svg.wave_delays(svg.WaveSpec("radial"), 3)
+    assert d_rad[(1, 3)] == 0
+    assert d_rad[(0, 3)] > 0
+
+
+def test_wave_invert_mirrors():
+    fwd = svg.wave_delays(svg.WaveSpec("linear"), 3)
+    inv = svg.wave_delays(svg.WaveSpec("linear", invert=True), 3)
+    assert inv[(0, 0)] == fwd[(2, 0)]
+    assert inv[(2, 0)] == fwd[(0, 0)]
+
+
+def test_wave_chain_offsets():
+    waves = [svg.parse_wave_spec("diagonal(duration=4)"),
+             svg.parse_wave_spec("radial(duration=3,gap=2)")]
+    assert svg.wave_offsets(waves) == [0, 5000.0]
+    out = svg.calendar_to_svg(_weeks(), animate="wave", theme="blue",
+                              waves=waves)
+    assert "@keyframes wave0" in out
+    assert "@keyframes wave1" in out
+    assert "wave0 4s normal infinite,wave1 3s normal infinite" in out

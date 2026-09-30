@@ -34,9 +34,10 @@ PYTHONPATH=src python3 -m github_contrib --login ddcq --out contributions.svg --
 --animate {wave,none}    wave (défaut) ou none = statique Phase1 byte-identique
 --theme {all,dark-green,blue,dark-blue,red,dark-red}
                          all (défaut) = 5 fichiers, sinon 1 seul vers --out
---wave-color #RRGGBB     couleur vague (défaut : FOURTH_QUARTILE du thème)
---wave-scale FLOAT       zoom case au pic (défaut 1.3, 1 = désactive zoom)
---wave-dy INT            translation Y px au pic (défaut -5, 0 = désactive lift)
+--wave SPEC              DSL vague, répétable pour chaînage (défaut diagonal).
+                         Ex. "diagonal(color=#116329,scale=1.3,dy=-5)"
+--waves-file JSON        fichier {"waves": ["diagonal", "radial(invert=true)"]},
+                         combiné avec --wave (fichier d'abord, CLI ensuite)
 --no-fetch               utilise cache local, aucun appel API
 ```
 
@@ -59,33 +60,64 @@ Règle couleur cases :
 - autres thèmes mappent `contributionLevel` → palette (sinon vert API écraserait thème).
 - légende `Less/More` suit palette thème.
 
-## Animation vague
+## Animation vagues (moteur v2)
 
-CSS pur, sans JS (compatible `<img>` README) : 1 `@keyframes wave` + `animation-delay` inline par case.
+CSS pur, sans JS (compatible `<img>` README) : 1 `@keyframes wave{i}` par vague + `animation-delay` inline par case.
 
-- Période `4.5s infinite`, flash ~600ms par case, pause résiduelle.
-- Délai diagonal : `wi * 35ms + row * 65ms` (colonne + ligne → gauche→droite en biais).
-- Keyframes : `0%,14%,100%` = couleur origine, `7%` = reflet.
-- `prefers-reduced-motion: reduce` → animation coupée.
-- Légende exclue, grille seule.
+- Chaînage séquentiel : `--wave` répétable, offset vague N = somme durations+gaps précédentes.
+- Keyframes par vague : `0%,14%,100%` = couleur origine, `7%` = reflet. Durée propre par vague (`duration`, défaut `4.5s`), `gap` après vague (défaut `1.0s`).
+- `invert=true` = miroir délai (vague inverse), `direction` CSS séparé (`normal`, défaut).
+- `prefers-reduced-motion: reduce` → animation coupée. Légende exclue, grille seule.
+- `transform-box: fill-box; transform-origin: center` : zoom/lift centrés par case.
 
-Personnalisation vague :
+### Formes (`shape`, délai `f(wi,row)`)
+
+| Forme | Formule | Params (défauts) |
+|---|---|---|
+| `diagonal` (défaut) | `wi*col + row*idx` | `col=35`, `row=65` |
+| `linear` | `wi*step` (horizontale) | `step=80` |
+| `radial` | `dist((wi,row),(cx,cy))*step` (ronde, centre grille) | `step=60`, `cx`/`cy` auto |
+| `sine` (poisson) | `wi*step + sin(row*freq)*amp` | `step=80`, `freq=1.0`, `amp=120` |
+
+### Params communs (toutes formes)
+
+| Param | Défaut | Effet |
+|---|---|---|
+| `color` | max thème (`FOURTH_QUARTILE`) | reflet vague, ex. `color=#ff0000` |
+| `scale` | `1.3` | zoom case au pic, `1` = désactive |
+| `dy` | `-5` | translation Y px au pic, `0` = désactive |
+| `duration` | `4.5` | secondes par cycle vague |
+| `gap` | `1.0` | pause secondes après vague |
+| `invert` | `false` | miroir sens propagation |
+| `direction` | `normal` | direction CSS |
+
+### Exemples vagues
 
 ```bash
-# vague rouge sur thème bleu, sans zoom ni lift (couleur seule)
-PYTHONPATH=src python3 -m github_contrib --theme blue --out contributions-blue.svg --no-fetch \
-  --wave-color "#ff0000" --wave-scale 1 --wave-dy 0
+# défaut : diagonale reflet max thème
+PYTHONPATH=src python3 -m github_contrib --out contributions.svg --no-fetch
 
-# zoom seul, lift désactivé
-PYTHONPATH=src python3 -m github_contrib --theme red --out contributions-red.svg --no-fetch \
-  --wave-scale 1.5 --wave-dy 0
+# vague rouge sans zoom ni lift (couleur seule)
+PYTHONPATH=src python3 -m github_contrib --theme blue --out /tmp/blue.svg --no-fetch \
+  --wave "diagonal(color=#ff0000,scale=1,dy=0)"
+
+# chaînage : diagonale puis ronde inversée
+PYTHONPATH=src python3 -m github_contrib --theme blue --out /tmp/chain.svg --no-fetch \
+  --wave "diagonal(color=#0a3069)" --wave "radial(invert=true,duration=3)"
+
+# poisson bleu, zoom fort
+PYTHONPATH=src python3 -m github_contrib --theme blue --out /tmp/fish.svg --no-fetch \
+  --wave "sine(color=#0a3069,scale=1.5,amp=200)"
+
+# fichier JSON (même modèle, versionnable)
+echo '{"waves": ["diagonal", "radial(invert=true,duration=3)"]}' > /tmp/waves.json
+PYTHONPATH=src python3 -m github_contrib --out /tmp/j.svg --theme red --no-fetch \
+  --waves-file /tmp/waves.json
 
 # statique Phase1, tous thèmes
 PYTHONPATH=src python3 -m github_contrib --out contributions.svg --no-fetch \
   --animate none --theme all
 ```
-
-`transform-box: fill-box; transform-origin: center` : zoom/lift centrés par case.
 
 ## Exemples
 

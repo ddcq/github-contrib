@@ -17,8 +17,11 @@ RX = 2
 
 """Generateur SVG pixel-proche du calendrier GitHub light mode."""
 
+from dataclasses import dataclass, field
 from datetime import date
 from xml.sax.saxutils import escape
+import math
+import re
 
 # Palette Primer light verrouillee (ticket 02)
 PALETTE = {
@@ -135,44 +138,157 @@ WAVE_DURATION = "4.5s"
 WAVE_DELAY_COL = 35
 WAVE_DELAY_ROW = 65
 
-def wave_css(reflect, scale=1.3, dy=-5):
-    base = (
-        "<style>"
-        ".cell-wave{animation:wave " + WAVE_DURATION + " infinite;"
-        "transform-box:fill-box;transform-origin:center;}"
-    )
-    if scale == 1 and dy == 0:
-        return (
-            base
-            + "@keyframes wave{0%,14%,100%{fill:var(--orig);}"
-            "7%{fill:" + reflect + ";}}"
-            "@media (prefers-reduced-motion: reduce){.cell-wave{animation:none;}}"
-            "</style>"
-        )
+WAVE_COMMON_KEYS = {"color", "scale", "dy", "duration", "gap",
+                    "invert", "direction"}
+
+
+def _shape_linear(wi, row, n_weeks, p):
+    return wi * float(p.get("step", 80))
+
+
+def _shape_diagonal(wi, row, n_weeks, p):
+    return wi * float(p.get("col", WAVE_DELAY_COL)) + row * float(p.get("row", WAVE_DELAY_ROW))
+
+
+def _shape_radial(wi, row, n_weeks, p):
+    cx = float(p.get("cx", (n_weeks - 1) / 2))
+    cy = float(p.get("cy", 3))
+    return math.dist((wi, row), (cx, cy)) * float(p.get("step", 60))
+
+
+def _shape_sine(wi, row, n_weeks, p):
+    return (wi * float(p.get("step", 80))
+            + math.sin(row * float(p.get("freq", 1.0))) * float(p.get("amp", 120)))
+
+
+SHAPES = {
+    "linear": _shape_linear,
+    "diagonal": _shape_diagonal,
+    "radial": _shape_radial,
+    "sine": _shape_sine,
+}
+
+
+@dataclass
+class WaveSpec:
+    shape: str = "diagonal"
+    color: str | None = None
+    scale: float = 1.3
+    dy: int = -5
+    duration: float = 4.5
+    gap: float = 1.0
+    invert: bool = False
+    direction: str = "normal"
+    params: dict = field(default_factory=dict)
+
+    def __post_init__(self):
+        if self.shape not in SHAPES:
+            raise ValueError(f"Forme inconnue: {self.shape} (choix: {sorted(SHAPES)})")
+
+
+DEFAULT_WAVES = [WaveSpec()]
+
+
+def _parse_value(v):
+    v = v.strip().strip('"\'')
+    if v.lower() in ("true", "false"):
+        return v.lower() == "true"
+    try:
+        return int(v)
+    except ValueError:
+        pass
+    try:
+        return float(v)
+    except ValueError:
+        pass
+    return v
+
+
+_SPEC_RE = re.compile(r"^\s*([A-Za-z_][\w-]*)\s*(?:\((.*)\))?\s*$", re.DOTALL)
+
+
+def parse_wave_spec(spec):
+    """Parse DSL `shape(k=v,...)` -> WaveSpec. Ex: `diagonal(color=#ff0000,invert=true)`."""
+    if isinstance(spec, WaveSpec):
+        return spec
+    m = _SPEC_RE.match(spec)
+    if not m:
+        raise ValueError(f"Spec vague invalide: {spec!r}")
+    shape, body = m.group(1), m.group(2)
+    if shape not in SHAPES:
+        raise ValueError(f"Forme inconnue: {shape} (choix: {sorted(SHAPES)})")
+    common, params = {}, {}
+    if body and body.strip():
+        for chunk in body.split(","):
+            chunk = chunk.strip()
+            if not chunk:
+                continue
+            if "=" not in chunk:
+                raise ValueError(f"Param sans '=' dans {spec!r}: {chunk!r}")
+            k, v = chunk.split("=", 1)
+            k, v = k.strip(), _parse_value(v)
+            (common if k in WAVE_COMMON_KEYS else params)[k] = v
+    return WaveSpec(shape=shape, params=params, **common)
+
+
+def wave_delays(wave, n_weeks):
+    """Delais ms (wi,row) pour une vague sur grille n_weeks x 7."""
+    fn = SHAPES[wave.shape]
+    grid = {(wi, row): fn(wi, row, n_weeks, wave.params)
+            for wi in range(n_weeks) for row in range(7)}
+    if wave.invert:
+        top = max(grid.values()) if grid else 0
+        grid = {k: top - v for k, v in grid.items()}
+    return grid
+
+
+def waves_css(waves, palette):
+    """Bloc <style> : 1 @keyframes wave{i} par vague + animation liste."""
+    names = []
+    frames = []
+    for i, wave in enumerate(waves):
+        reflect = wave.color or palette["FOURTH_QUARTILE"]
+        names.append(f"wave{i} {wave.duration:g}s {wave.direction} infinite")
+        if wave.scale == 1 and wave.dy == 0:
+            frames.append(
+                f"@keyframes wave{i}{{0%,14%,100%{{fill:var(--orig);}}"
+                f"7%{{fill:{reflect};}}}}"
+            )
+        else:
+            frames.append(
+                f"@keyframes wave{i}{{0%,14%,100%{{fill:var(--orig);"
+                f"transform:scale(1) translateY(0);}}"
+                f"7%{{fill:{reflect};"
+                f"transform:scale({wave.scale:g}) translateY({wave.dy}px);}}}}"
+            )
     return (
-        base
-        + "@keyframes wave{0%,14%,100%{fill:var(--orig);"
-        "transform:scale(1) translateY(0);}"
-        "7%{fill:" + reflect + ";"
-        f"transform:scale({scale:g}) translateY({dy}px);}}"
+        "<style>"
+        f".cell-wave{{animation:{','.join(names)};"
+        "transform-box:fill-box;transform-origin:center;}"
+        + "".join(frames) +
         "@media (prefers-reduced-motion: reduce){.cell-wave{animation:none;}}"
         "</style>"
     )
 
 
-WAVE_CSS = wave_css(WAVE_REFLECT)
+def wave_offsets(waves):
+    """Offset ms demarrage chaque vague (cumul durations+gaps)."""
+    offsets, cursor = [], 0.0
+    for wave in waves:
+        offsets.append(cursor)
+        cursor += (wave.duration + wave.gap) * 1000
+    return offsets
 
 
-def calendar_to_svg(weeks, animate="wave", theme="dark-green",
-                    wave_color=None, wave_scale=1.3, wave_dy=-5):
+def calendar_to_svg(weeks, animate="wave", theme="dark-green", waves=None):
     """Convertit weeks (liste de {contributionDays:[...]}) en str SVG."""
     palette = THEMES.get(theme, THEMES["dark-green"])
-    reflect = wave_color or palette["FOURTH_QUARTILE"]
     bg = THEME_BG.get(theme)
     fg = THEME_FG.get(theme, "#1f2328")
     # Legacy dark-green garde couleur API pour compat byte-identique Phase1.
     # Autres themes mappent level -> palette (sinon API verte écrase theme).
     keep_api = (theme == "dark-green")
+    wave_list = [parse_wave_spec(w) for w in waves] if waves else DEFAULT_WAVES
     n_weeks = len(weeks)
     grid_w = n_weeks * PITCH + GAP
     grid_h = 7 * PITCH + GAP
@@ -186,7 +302,9 @@ def calendar_to_svg(weeks, animate="wave", theme="dark-green",
     ]
 
     if animate == "wave":
-        parts.append(wave_css(reflect, wave_scale, wave_dy))
+        parts.append(waves_css(wave_list, palette))
+        delay_grids = [wave_delays(w, n_weeks) for w in wave_list]
+        offsets = wave_offsets(wave_list)
 
     if bg:
         parts.append(f'<rect width="{width}" height="{height}" fill="{bg}"/>')
@@ -226,11 +344,14 @@ def calendar_to_svg(weeks, animate="wave", theme="dark-green",
             y = MONTH_H + row * PITCH
             tip = escape(tooltip(day_date, count))
             if animate == "wave":
-                delay = wi * WAVE_DELAY_COL + row * WAVE_DELAY_ROW
+                delays = ",".join(
+                    f"{offsets[i] + delay_grids[i][(wi, row)]:g}ms"
+                    for i in range(len(wave_list))
+                )
                 parts.append(
                     f'<rect x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="{RX}" '
                     f'fill="{color}" class="cell-wave" '
-                    f'style="--orig:{color};animation-delay:{delay}ms" '
+                    f'style="--orig:{color};animation-delay:{delays}" '
                     f'data-date="{day_date.isoformat()}" '
                     f'data-count="{count}"><title>{tip}</title></rect>'
                 )

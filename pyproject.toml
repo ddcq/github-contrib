@@ -1,0 +1,12 @@
+[project]
+name = "github-contrib"
+version = "0.1.0"
+description = "Genere un SVG statique identique au calendrier de contributions GitHub (phase 1)"
+requires-python = ">=3.11"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

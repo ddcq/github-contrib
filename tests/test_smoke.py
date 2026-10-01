@@ -212,6 +212,35 @@ def test_wave_invert_mirrors():
     assert inv[(2, 0)] == fwd[(0, 0)]
 
 
+def _keyframes(out):
+    """{nom: [(offset%, fill, transform)]} pour chaque @keyframes cell{idx}."""
+    import re
+    rules = {}
+    for name, body in re.findall(
+            r"@keyframes (cell?\d+)(\{.*?)(?=@keyframes cell?\d+|\Z)", out, re.S):
+        rules[name] = [
+            (float(p), f, t)
+            for p, f, t in re.findall(
+                r"([\d.]+)%\{fill:([^;}]+);transform:([^;}]+);?\}", body)
+        ]
+    return rules
+
+
+def _assert_monotonic(rules):
+    """Chrome trie les keyframes par offset (dernier gagne a egalite) :
+    un offset decroissant ou > 100% est un bug de rendu."""
+    for name, stops in rules.items():
+        pcts = [s[0] for s in stops]
+        assert all(b >= a for a, b in zip(pcts, pcts[1:])), \
+            f"{name}: offsets decroissants {pcts}"
+        assert max(pcts) <= 100.0, f"{name}: offset > 100% {max(pcts)}"
+        seen = {}
+        for pct, fill, tf in stops:
+            assert seen.setdefault(pct, (fill, tf)) == (fill, tf), \
+                f"{name}: collision a {pct}%"
+    return rules
+
+
 def test_wave_chain_offsets():
     waves = [svg.parse_wave_spec("diagonal(duration=4)"),
              svg.parse_wave_spec("diagonal(duration=3,gap=2,invert=true)")]
@@ -220,14 +249,36 @@ def test_wave_chain_offsets():
                               waves=waves)
     # cycle total boucle : 5s + 5s = 10s, tranches 0-40% puis 50-80%,
     # 1 keyframes par case sur l'element contribution lui-meme.
-    # case (0,0) : vague0 pic a 20%, vague1 (delai inverse 425ms) a 54.25%
     assert "@keyframes cell0" in out
     assert "animation:cell1 10s normal infinite" in out
-    assert "20%" in out
-    assert "40%" in out
-    assert "54.25%" in out
+    stops = _assert_monotonic(_keyframes(out))["cell0"]
+    # chaque vague rend exactement un pic, et les deux sont ordonnees
+    peaks = [s[0] for s in stops if s[1].startswith("#")]
+    assert len(peaks) == 2, peaks
+    assert peaks[0] < peaks[1], peaks
+    assert all(0 < p < 100 for p in peaks), peaks
     assert "opacity" not in out.split("</style>")[0]
     assert 'pointer-events="none"' not in out
+
+
+def test_multi_wave_offsets_monotonic_and_bounded():
+    """Non-regression Chrome : chaque vague reste confinee a son slot.
+
+    Avant, le decalage spatial etait ajoute tel quel a l'offset : 215 des
+    369 cases portaient un offset > 100% et une crete se faisait ecraser
+    par le stop 100% (pic de la vague 6 invisible sur une case).
+    """
+    import json
+    import os
+    path = os.path.join(os.path.dirname(__file__), os.pardir, "waves.json")
+    with open(path, encoding="utf-8") as f:
+        specs = json.load(f)["waves"]
+    out = svg.calendar_to_svg(_weeks(), animate="wave", theme="green",
+                              waves=specs)
+    rules = _assert_monotonic(_keyframes(out))
+    assert rules, "aucun keyframes genere"
+    for name, stops in rules.items():
+        assert len([s for s in stops if s[1].startswith("#")]) == 6, name
 
 
 def test_wave_chain_all_visible():

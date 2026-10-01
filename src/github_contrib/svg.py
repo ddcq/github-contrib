@@ -311,7 +311,17 @@ def waves_css(waves, palette, n_weeks=0):
                 stops = [_stop(0, "var(--orig)", 1, 0, 0, False)]
                 for i, wave in enumerate(waves):
                     reflect = wave.color or palette["FOURTH_QUARTILE"]
-                    base = offsets[i] + grids[i][(wi, row)]
+                    # Chrome trie les keyframes par offset et garde le
+                    # dernier en cas d'egalite : le decalage spatial est
+                    # normalise dans la largeur du slot au lieu d'etre
+                    # ajoute tel quel, sinon une vague deborde sur la
+                    # suivante (offset > 100%) et une crete peut se faire
+                    # ecraser par le stop 100%.
+                    g = grids[i]
+                    gmin, gmax = min(g.values()), max(g.values())
+                    t = (g[(wi, row)] - gmin) / (gmax - gmin) if gmax > gmin \
+                        else 0.0
+                    base = offsets[i] + t * (wave.gap * 1000)
                     stops.append(_stop(base / total * 100, "var(--orig)",
                                        wave.scale, wave.dy, wave.rotate, False))
                     stops.append(_stop((base + wave.duration * 500) / total * 100,

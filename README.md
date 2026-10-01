@@ -105,8 +105,9 @@ GitHub sert le SVG **compressé en gzip niveau 6** (Fastly, `vary: Accept-Encodi
 | Param | Défaut | Effet |
 |---|---|---|
 | `color` | max thème (`FOURTH_QUARTILE`) | reflet vague, ex. `color=#ff0000` |
-| `scale` | `1.3` | zoom case au pic, `1` = désactive |
-| `dy` | `-5` | translation Y px au pic, `0` = désactive |
+| `scale` | `1.3` | zoom case au pic, `1` = désactive. Le zoom part de l'horizon moyen (centre de la 4e ligne) : chaque ligne dérive de `(centre - 57) * (scale - 1)` |
+| `dy` | `-5` | translation Y px au pic, identique sur toutes les lignes, `0` = désactive |
+| `sy` | `1.0` | multiplicateur de l'écart à l'horizon, `0` = scale sans drift vertical |
 | `rotate` | `0` | rotation degrés au pic : `90`, `-90`, `180`, `-180`, `270`, `-270`, `360`, `-360` (`0` = désactive) |
 | `duration` | `4.5` | secondes par cycle vague |
 | `gap` | `1.0` | pause secondes après vague |

@@ -146,8 +146,13 @@ WAVE_DURATION = "4.5s"
 WAVE_DELAY_COL = 35
 WAVE_DELAY_ROW = 65
 
-WAVE_COMMON_KEYS = {"color", "scale", "dy", "rotate", "duration", "gap",
+WAVE_COMMON_KEYS = {"color", "scale", "dy", "sy", "rotate", "duration", "gap",
                     "invert", "direction"}
+
+# Ligne pivot du zoom : centre de la 4e ligne = 13 + 3*13 + 10/2 = 57.
+HORIZON_ROW = 3
+HORIZON_Y = MONTH_H + HORIZON_ROW * PITCH + CELL / 2
+ROWS = 7
 
 WAVE_ROTATIONS = {0, 90, -90, 180, -180, 270, -270, 360, -360}
 
@@ -185,6 +190,7 @@ class WaveSpec:
     color: str | None = None
     scale: float = 1.3
     dy: int = -5
+    sy: float = 1.0
     rotate: int = 0
     duration: float = 4.5
     gap: float = 1.0
@@ -255,12 +261,35 @@ def wave_delays(wave, n_weeks):
     return grid
 
 
-def _wave_frame(i, reflect, scale, dy, rotate, marks):
-    """Un @keyframes wave{i} pour 1 vague seule. marks=None (look legacy)."""
-    peak = "" if (scale == 1 and dy == 0 and rotate == 0) else \
-        f"transform:scale({scale:g}) translateY({dy}px) rotate({rotate}deg);"
+def row_dy(wave, row):
+    """Decalage vertical du pic pour `row` : dy + sy*(centre-horizon)*(scale-1).
+
+    Le zoom part de l'horizon moyen (centre de la 4e ligne) : plus la case
+    est loin de l'horizon, plus le scale l'entraine. `dy` reste un lift
+    uniforme, `sy` regle l'intensite de l'ecart a l'horizon.
+    """
+    centre = MONTH_H + row * PITCH + CELL / 2
+    return wave.dy + wave.sy * (centre - HORIZON_Y) * (wave.scale - 1)
+
+
+def peak_transform(wave, row):
+    """Transform du pic pour `row`, ou None si identity (0 octet)."""
+    dy = row_dy(wave, row)
+    if wave.scale == 1 and dy == 0 and wave.rotate == 0:
+        return None
+    # translateY(0px) = identity, on l'omet (economie sur 7 lignes).
+    # translateY AVANT scale : le dy est un offset ecran, pas multiplie
+    # par le scale. Effet de bord assume : pour rotate=90/-90 le dy ne
+    # suit plus la rotation (avant, il l suivait).
+    ty = f"translateY({dy:g}px) " if dy else ""
+    return f"{ty}scale({wave.scale:g}) rotate({wave.rotate}deg)"
+
+
+def _wave_frame(name, reflect, tf):
+    """Un @keyframes {name} pour 1 vague seule (transform = None = identity)."""
+    peak = "" if tf is None else f"transform:{tf};"
     return (
-        f"@keyframes wave{i}{{0%,14%,100%{{fill:var(--o);transform:none}}"
+        f"@keyframes {name}{{0%,14%,100%{{fill:var(--o);transform:none}}"
         f"7%{{fill:{reflect};{peak}}}}}"
     )
 
@@ -293,11 +322,10 @@ def waves_css(waves, palette, n_weeks=0, cells=None):
     if len(waves) == 1:
         wave = waves[0]
         reflect = wave.color or palette["FOURTH_QUARTILE"]
-        head = (f".cell-wave{{animation:wave0 {wave.duration:g}s "
-                f"{wave.direction} infinite;"
-                "transform-box:fill-box;transform-origin:center;}")
-        frames = [_wave_frame(0, reflect, wave.scale, wave.dy,
-                              wave.rotate, None)]
+        head = ".cell-wave{transform-box:fill-box;transform-origin:center;}"
+        # 1 jeu de keyframes par ligne : le pic depends de row (row_dy).
+        frames = [_wave_frame(f"wave0r{row}", reflect, peak_transform(wave, row))
+                  for row in range(ROWS)]
     else:
         total = sum((w.duration + w.gap) * 1000 for w in waves)
         offsets = wave_offsets(waves)
@@ -305,12 +333,14 @@ def waves_css(waves, palette, n_weeks=0, cells=None):
         refl = [w.color or palette["FOURTH_QUARTILE"] for w in waves]
         head = ".cell-wave{transform-box:fill-box;transform-origin:center;}"
         # transforms pics hissees une fois (custom props), pas par case.
+        # 1 prop par (vague, ligne) : le pic depend de row (row_dy).
         head += ":root{" + "".join(
-            f"--t{i}:scale({w.scale:g}) translateY({w.dy}px) "
-            f"rotate({w.rotate}deg);" for i, w in enumerate(waves)) + "}"
+            f"--t{i}r{row}:{tf};" for i, w in enumerate(waves)
+            for row, tf in ((r, peak_transform(w, r)) for r in range(ROWS))
+            if tf is not None) + "}"
         frames = []
         for wi in range(n_weeks):
-            for row in range(7):
+            for row in range(ROWS):
                 idx = wi * 7 + row
                 if cells is not None and idx not in cells:
                     continue
@@ -321,10 +351,10 @@ def waves_css(waves, palette, n_weeks=0, cells=None):
                     gm, gM = min(g.values()), max(g.values())
                     t = (g[(wi, row)] - gm) / (gM - gm) if gM > gm else 0.0
                     base = offsets[i] + t * ((wave.duration + wave.gap) * 1000 - d)
-                    ident = wave.scale == 1 and wave.dy == 0 and wave.rotate == 0
+                    tf = peak_transform(wave, row)
                     stops.append(_stop(base / total * 100, "var(--o)", "none"))
                     stops.append(_stop((base + d / 2) / total * 100, refl[i],
-                                       None if ident else f"var(--t{i})"))
+                                       None if tf is None else f"var(--t{i}r{row})"))
                     stops.append(_stop((base + d) / total * 100, "var(--o)", "none"))
                 frames.append(f"@keyframes c{idx}{{{''.join(stops)}}}")
     return (
@@ -416,7 +446,9 @@ def calendar_to_svg(weeks, animate="wave", theme="dark-green", waves=None):
                 parts.append(
                     f'<rect x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="{RX}" '
                     f'fill="{color}" class="cell-wave" '
-                    f'style="--o:{color};animation-delay:{delay:g}ms" '
+                    f'style="--o:{color};animation:wave0r{row} '
+                    f'{wave.duration:g}s {wave.direction} infinite;'
+                    f'animation-delay:{delay:g}ms" '
                     f'data-date="{day_date.isoformat()}" '
                     f'data-count="{count}"/>'
                 )

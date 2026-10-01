@@ -1,10 +1,10 @@
 {
   "waves": [
-    "diagonal",
-    "radial(invert=true,color=#26a641,duration=3.5,gap=1.5,scale=1.2,rotate=90)",
-    "sine(color=#116329,duration=5,gap=1,scale=0.4,dy=-8,amp=200,rotate=-90)",
-    "linear(invert=true,color=#2da44e,duration=4,gap=2.5,direction=alternate)",
-    "diagonal(invert=true,color=#4ac26b,duration=4,gap=1.5,scale=0.9,dy=0,rotate=180)",
-    "radial(cx=2,cy=30,color=#aceebb,duration=3,gap=2,scale=0.1,rotate=360)"
+    "diagonal(color=#000,scale=1)",
+    "radial(invert=true,color=#26a641,duration=0.5,gap=1.5,scale=1.2,rotate=90,dy=40,sy=0)",
+    "sine(color=#116329,duration=1.5,gap=1,scale=0.4,dy=-8,amp=200,rotate=-90)",
+    "linear(invert=true,color=#2da44e,duration=2,gap=2.5,direction=alternate)",
+    "diagonal(invert=true,color=#4ac26b,duration=1,gap=1.5,scale=0.9,dy=0,rotate=180)",
+    "radial(cx=2,cy=30,color=#aceebb,duration=0.7,gap=2,scale=0.1,rotate=360)"
   ]
 }

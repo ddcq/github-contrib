@@ -19,8 +19,8 @@ def build_parser():
                    help="Theme couleur : un seul theme ou all (defaut, tous themes)")
     p.add_argument("--wave", action="append", default=None, metavar="SPEC",
                    help="Vague DSL, repetable pour chainage : "
-                        "linear|diagonal|radial|sine(k=v,...). "
-                        "Ex. diagonal(color=#116329,scale=1.3,dy=-5)")
+"linear|diagonal|radial|sine(k=v,...). "
+                         "Ex. diagonal(color=#116329,scale=1.3,dy=-5,sy=1)")
     p.add_argument("--waves-file", default=None, metavar="JSON",
                    help='Fichier {"waves": ["diagonal", "radial(invert=true)"]}')
     p.add_argument("--no-fetch", action="store_true",

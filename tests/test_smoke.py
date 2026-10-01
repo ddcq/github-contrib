@@ -1,3 +1,5 @@
+import pytest
+
 from github_contrib import svg
 
 
@@ -42,7 +44,7 @@ def test_wave_injects_style_once():
 def test_wave_delay_diagonal():
     out = svg.calendar_to_svg(_weeks(), animate="wave", theme="green")
     # wi=0,row=1 (lundi 28/09) -> 0*35+1*65=65 ; wi=0,row=2 -> 130
-    assert "--o:#eff2f5;animation-delay:65ms" in out
+    assert "animation:wave0r1 4.5s normal infinite;animation-delay:65ms" in out
     assert "animation-delay:130ms" in out
     # wi=1,row=1 (lundi 05/10) -> 1*35+1*65=100
     assert "animation-delay:100ms" in out
@@ -161,6 +163,54 @@ def test_wave_zoom_lift_optional():
                                  waves=["diagonal(scale=1.5,dy=-8)"])
     assert "scale(1.5)" in custom
     assert "translateY(-8px)" in custom
+
+
+def test_row_dy_depends_on_row_and_scale():
+    """Zoom centre sur l'horizon moyen (57 = centre de la 4e ligne)."""
+    assert svg.HORIZON_Y == 57
+    w = svg.parse_wave_spec("diagonal(scale=1.1,dy=0)")
+    # row 0 : centre 13+5=18 -> (18-57)*0.1 = -3.9
+    assert svg.row_dy(w, 0) == pytest.approx(-3.9)
+    # row 3 : sur l'horizon -> pas d'ecart
+    assert svg.row_dy(w, 3) == pytest.approx(0)
+    # symetrie lignes 0 et 6 autour de l'horizon
+    assert svg.row_dy(w, 6) == pytest.approx(-svg.row_dy(w, 0))
+    # dy reste un lift uniforme, identique sur toutes les lignes
+    lift = svg.parse_wave_spec("diagonal(scale=1.3,dy=-5)")
+    assert svg.row_dy(lift, 3) == pytest.approx(-5)
+    assert svg.row_dy(lift, 3) - svg.row_dy(lift, 0) == pytest.approx(11.7)
+    # sy amplifie l'ecart a l'horizon sans toucher au lift
+    amp = svg.parse_wave_spec("diagonal(scale=1.1,dy=-5,sy=2)")
+    assert svg.row_dy(amp, 0) == pytest.approx(-5 + 2 * -3.9)
+    assert svg.row_dy(amp, 3) == pytest.approx(-5)
+
+
+def test_row_dy_scale_one_is_pure_lift():
+    w = svg.parse_wave_spec("diagonal(scale=1,dy=-5)")
+    assert [svg.row_dy(w, r) for r in range(7)] == [-5] * 7
+    assert svg.peak_transform(w, 0) == "translateY(-5px) scale(1) rotate(0deg)"
+    ident = svg.parse_wave_spec("diagonal(scale=1,dy=0)")
+    assert svg.peak_transform(ident, 4) is None
+
+
+def test_wave_keyframes_per_row():
+    out = svg.calendar_to_svg(_weeks(), animate="wave", theme="green")
+    assert "@keyframes wave0r0" in out and "@keyframes wave0r6" in out
+    assert "translateY(-5px)" in out  # row 3 = horizon, dy brut
+
+
+def test_multi_wave_props_per_row():
+    waves = ["diagonal(scale=1.2,dy=0)", "radial(scale=0.4,dy=0)"]
+    out = svg.calendar_to_svg(_weeks(), animate="wave", theme="blue",
+                              waves=waves)
+    # row 0 de la vague 0 : (18-57)*0.2 = -7.8
+    assert "--t0r0:translateY(-7.8px) scale(1.2) rotate(0deg);" in out
+    # row 3 (horizon) : dy nul -> translateY omis, mais scale reste
+    assert "--t0r3:scale(1.2) rotate(0deg);" in out
+    # fixture : row 1 et 2 seulement -> c1 utilise t0r1, c2 t0r2
+    assert "var(--t0r1)" in out
+    assert "var(--t0r2)" in out
+    assert "var(--t1r1)" in out
 
 
 def test_wave_rotate():

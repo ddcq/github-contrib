@@ -75,8 +75,9 @@ CSS pur, sans JS (compatible `<img>` README).
 - Keyframes par vague : tranche `[offset, offset+duration]`, pic à mi-tranche. 1 seule vague = look legacy (flash 7%/14%).
 - Keyframes par vague : `0%,14%,100%` = couleur origine, `7%` = reflet. Durée propre par vague (`duration`, défaut `4.5s`), `gap` après vague (défaut `1.0s`).
 - `invert=true` = miroir délai (vague inverse), `direction` CSS séparé (`normal`, défaut).
-- `prefers-reduced-motion: reduce` → animation coupée. Légende exclue, grille seule.
+- `prefers-reduced-motion: reduce` → animation coupée (`!important` : le `animation` inline des cases l'outrankait). Légende exclue, grille seule.
 - `transform-box: fill-box; transform-origin: center` : zoom/lift centrés par case.
+- Paliers en `transform:none` (= identité, 14 o au lieu de 45) et pourcentages à 4 chiffres significatifs : −24% raw, −25% gzip. Ne jamais **omettre** `fill` ni `transform` d'un palier : Chrome vide la keyframe et reconstruit la rampe depuis 0% (crête aplatie).
 
 ### Formes (`shape`, délai `f(wi,row)`)
 

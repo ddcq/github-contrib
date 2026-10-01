@@ -258,12 +258,10 @@ def wave_delays(wave, n_weeks):
 
 def _wave_frame(i, reflect, scale, dy, rotate, marks):
     """Un @keyframes wave{i} pour 1 vague seule. marks=None (look legacy)."""
-    rest = "" if (scale == 1 and dy == 0 and rotate == 0) else \
-        "transform:scale(1) translateY(0) rotate(0deg);"
     peak = "" if (scale == 1 and dy == 0 and rotate == 0) else \
         f"transform:scale({scale:g}) translateY({dy}px) rotate({rotate}deg);"
     return (
-        f"@keyframes wave{i}{{0%,14%,100%{{fill:var(--orig);{rest}}}"
+        f"@keyframes wave{i}{{0%,14%,100%{{fill:var(--orig);transform:none}}"
         f"7%{{fill:{reflect};{peak}}}}}"
     )
 
@@ -274,11 +272,14 @@ def _cell_frame(idx, stops):
 
 
 def _stop(pct, fill, scale, dy, rotate, peak):
-    rest = "" if (scale == 1 and dy == 0 and rotate == 0) else \
-        "transform:scale(1) translateY(0) rotate(0deg);"
-    peak_t = "" if (scale == 1 and dy == 0 and rotate == 0) else \
+    # `transform:none` vaut l'identite explicite (verifie : memes matrices
+    # de transformation) et evite 31 octets de `scale(1) translateY(0)`.
+    # Ne jamais omettre la propriete : Chrome vide alors la cle de
+    # keyframe et reconstruit la rampe depuis 0% (crête aplatie).
+    tf = "" if (peak and scale == 1 and dy == 0 and rotate == 0) else (
         f"transform:scale({scale:g}) translateY({dy}px) rotate({rotate}deg);"
-    return f"{pct:g}%{{fill:{fill};{peak_t if peak else rest}}}"
+        if peak else "transform:none;")
+    return f"{pct:.4g}%{{fill:{fill};{tf}}}"
 
 
 def waves_css(waves, palette, n_weeks=0):
@@ -323,7 +324,7 @@ def waves_css(waves, palette, n_weeks=0):
                 frames.append(_cell_frame(idx, stops))
     return (
         "<style>" + head + "".join(frames) +
-        "@media (prefers-reduced-motion: reduce){.cell-wave{animation:none;}}"
+        "@media (prefers-reduced-motion: reduce){.cell-wave{animation:none!important;}}"
         "</style>"
     )
 

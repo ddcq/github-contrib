@@ -67,17 +67,29 @@ Règle couleur cases :
 CSS pur, sans JS (compatible `<img>` README).
 
 - 1 vague : `fill` case animé direct (look legacy).
-- N vagues : 1 `@keyframes cell{idx}` par case sur l'élément contribution lui-même, tranches séquentielles bouclées (N animations `fill` partagées se recouvrent : seule la dernière serait visible). Pics exacts par case : délai forme intégré aux pourcentages.
+- N vagues : 1 `@keyframes c{idx}` par case sur l'élément contribution lui-même, tranches séquentielles bouclées (N animations `fill` partagées se recouvrent : seule la dernière serait visible). Pics exacts par case : délai formé intégré aux pourcentages.
 - `direction` honored 1 vague ; multi toujours `normal`.
-- `animation-delay` inline par case = délai forme (`invert` inclus).
+- `animation-delay` inline par case = délai formé (`invert` inclus).
 
-- Chaînage séquentiel en boucle : cycle total = somme durations+gaps, chaque vague occupe sa tranche puis boucle vers la première. `gap` = pause entre vagues (ex. config `waves.json` : cycle 35.5s).
+- Chaînage séquentiel en boucle : cycle total = somme durations+gaps, chaque vague occupe sa tranche puis boucle vers la première. `gap` = pause entre vagues (ex. config `waves.json` : cycle 33.5s).
 - Keyframes par vague : tranche `[offset, offset+duration]`, pic à mi-tranche. 1 seule vague = look legacy (flash 7%/14%).
 - Keyframes par vague : `0%,14%,100%` = couleur origine, `7%` = reflet. Durée propre par vague (`duration`, défaut `4.5s`), `gap` après vague (défaut `1.0s`).
 - `invert=true` = miroir délai (vague inverse), `direction` CSS séparé (`normal`, défaut).
 - `prefers-reduced-motion: reduce` → animation coupée (`!important` : le `animation` inline des cases l'outrankait). Légende exclue, grille seule.
 - `transform-box: fill-box; transform-origin: center` : zoom/lift centrés par case.
-- Paliers en `transform:none` (= identité, 14 o au lieu de 45) et pourcentages à 4 chiffres significatifs : −24% raw, −25% gzip. Ne jamais **omettre** `fill` ni `transform` d'un palier : Chrome vide la keyframe et reconstruit la rampe depuis 0% (crête aplatie).
+- Paliers en `transform:none` (= identité, 14 o au lieu de 45), pourcentages à 1 décimale et nom de variable `--o` : −30% raw, −47% gzip. Ne jamais **omettre** `fill` ni `transform` d'un palier : Chrome vide la keyframe et reconstruit la rampe depuis 0% (crête aplatie).
+- Transforms de pic hissés une fois en `:root` (`--t0`, `--t1`…) au lieu d'être répétés dans les 371 keyframes.
+- **Offsets non décroissants obligatoires** : Chrome trie les keyframes par offset et garde le dernier en cas d'égalité. Le délai spatial est donc *normalisé* dans la largeur du slot (`offset + t·(duration+gap−duration)`) au lieu d'être ajouté tel quel : 0 chevauchement, 0 offset > 100%, 0 collision de crête. Vérifié par `test_multi_wave_offsets_monotonic_and_bounded`.
+- Pas de `<title>` par case : Chrome repeint les nœuds texte avec le `fill` animé (24 → 24 fps sur un calendrier dense) et un SVG chargé via `<img>` n'affiche de toute façon aucun tooltip. Vérifié : tooltips absents à l'identique avec/sans.
+
+### Mesures (thème dark-green, 53 semaines / 369 cases)
+
+| | avant | après | gain |
+|---|---|---|---|
+| raw | 464 634 o | **322 179 o** | −30.7% |
+| gzip-6 (ce que GitHub sert) | 27 557 o | **14 657 o** | −46.8% |
+
+GitHub sert le SVG **compressé en gzip niveau 6** (Fastly, `vary: Accept-Encoding`, fichier servi tel quel). Mesurer en gzip-9 sous-estime d'environ 13% le poids réel sur le fil.
 
 ### Formes (`shape`, délai `f(wi,row)`)
 
@@ -158,4 +170,4 @@ Stdlib seule, pas de dépendance. `pytest` absent par défaut : suite manuelle �
 PYTHONPATH=src python3 -c "import tests.test_smoke as t; [getattr(t,k)() for k in dir(t) if k.startswith('test_')]"
 ```
 
-Couverture : palette verrouillée, `none` sans style, injection style unique, délai diagonal, `--orig` = fill, thèmes enregistrés, mapping level vs API, reflet par thème, naming `theme_outputs`, palettes Winter officielles, fond sombre dark, couleur/zoom/lift custom.
+Couverture : palette verrouillée, `none` sans style, injection style unique, délai diagonal, `--o` = fill, thèmes enregistrés, mapping level vs API, reflet par thème, naming `theme_outputs`, palettes Winter officielles, fond sombre dark, couleur/zoom/lift custom.

@@ -19,7 +19,6 @@ RX = 2
 
 from dataclasses import dataclass, field
 from datetime import date
-from xml.sax.saxutils import escape
 import math
 import re
 
@@ -261,35 +260,35 @@ def _wave_frame(i, reflect, scale, dy, rotate, marks):
     peak = "" if (scale == 1 and dy == 0 and rotate == 0) else \
         f"transform:scale({scale:g}) translateY({dy}px) rotate({rotate}deg);"
     return (
-        f"@keyframes wave{i}{{0%,14%,100%{{fill:var(--orig);transform:none}}"
+        f"@keyframes wave{i}{{0%,14%,100%{{fill:var(--o);transform:none}}"
         f"7%{{fill:{reflect};{peak}}}}}"
     )
 
 
-def _cell_frame(idx, stops):
-    """Un @keyframes cell{idx} multi-vagues (pics tranches sur la case)."""
-    return f"@keyframes cell{idx}{{{''.join(stops)}}}"
-
-
-def _stop(pct, fill, scale, dy, rotate, peak):
+def _stop(pct, fill, tf):
     # `transform:none` vaut l'identite explicite (verifie : memes matrices
     # de transformation) et evite 31 octets de `scale(1) translateY(0)`.
-    # Ne jamais omettre la propriete : Chrome vide alors la cle de
-    # keyframe et reconstruit la rampe depuis 0% (crête aplatie).
-    tf = "" if (peak and scale == 1 and dy == 0 and rotate == 0) else (
-        f"transform:scale({scale:g}) translateY({dy}px) rotate({rotate}deg);"
-        if peak else "transform:none;")
-    return f"{pct:.4g}%{{fill:{fill};{tf}}}"
+    # Ne jamais omettre la propriete (sauf pic identite, tf=None) : Chrome
+    # vide alors la cle de keyframe et reconstruit la rampe depuis 0%.
+    prop = "" if tf is None else f"transform:{tf};"
+    return f"{pct:.1f}%{{fill:{fill};{prop}}}"
 
 
-def waves_css(waves, palette, n_weeks=0):
+def waves_css(waves, palette, n_weeks=0, cells=None):
     """Bloc <style> : animations vague sur les cases elles-memes.
 
     1 vague : anime fill direct (look legacy). N vagues : 1 @keyframes
-    cell{idx} par case, tranches sequentielles bouclees (N animations
+    c{idx} par case, tranches sequentielles bouclees (N animations
     fill sur meme element se recouvrent : seule la derniere serait
     visible, d'ou un seul keyframes par case).
     Cycle total boucle sum(durations+gaps). Direction multi = normal.
+
+    Les offsets doivent etre non decroissants (Chrome trie les keyframes
+    par offset, en gardant le dernier en cas d'egalite) : chaque vague
+    est donc confinee a son slot [offset_i, offset_i + duration_i + gap_i].
+    Le decalage spatial est normalise dans cette largeur au lieu d'etre
+    ajoute tel quel, ce qui garantit 0 chevauchement, 0 offset > 100% et
+    0 collision de crête.
     """
     if len(waves) == 1:
         wave = waves[0]
@@ -303,35 +302,31 @@ def waves_css(waves, palette, n_weeks=0):
         total = sum((w.duration + w.gap) * 1000 for w in waves)
         offsets = wave_offsets(waves)
         grids = [wave_delays(w, n_weeks) for w in waves]
+        refl = [w.color or palette["FOURTH_QUARTILE"] for w in waves]
         head = ".cell-wave{transform-box:fill-box;transform-origin:center;}"
+        # transforms pics hissees une fois (custom props), pas par case.
+        head += ":root{" + "".join(
+            f"--t{i}:scale({w.scale:g}) translateY({w.dy}px) "
+            f"rotate({w.rotate}deg);" for i, w in enumerate(waves)) + "}"
         frames = []
         for wi in range(n_weeks):
             for row in range(7):
                 idx = wi * 7 + row
-                stops = [_stop(0, "var(--orig)", 1, 0, 0, False)]
+                if cells is not None and idx not in cells:
+                    continue
+                stops = []
                 for i, wave in enumerate(waves):
-                    reflect = wave.color or palette["FOURTH_QUARTILE"]
-                    # Chrome trie les keyframes par offset et garde le
-                    # dernier en cas d'egalite : le decalage spatial est
-                    # normalise dans la largeur du slot au lieu d'etre
-                    # ajoute tel quel, sinon une vague deborde sur la
-                    # suivante (offset > 100%) et une crete peut se faire
-                    # ecraser par le stop 100%.
+                    d = wave.duration * 1000
                     g = grids[i]
-                    gmin, gmax = min(g.values()), max(g.values())
-                    t = (g[(wi, row)] - gmin) / (gmax - gmin) if gmax > gmin \
-                        else 0.0
-                    base = offsets[i] + t * (wave.gap * 1000)
-                    stops.append(_stop(base / total * 100, "var(--orig)",
-                                       wave.scale, wave.dy, wave.rotate, False))
-                    stops.append(_stop((base + wave.duration * 500) / total * 100,
-                                       reflect, wave.scale, wave.dy,
-                                       wave.rotate, True))
-                    stops.append(_stop((base + wave.duration * 1000) / total * 100,
-                                       "var(--orig)", wave.scale, wave.dy,
-                                       wave.rotate, False))
-                stops.append(_stop(100, "var(--orig)", 1, 0, 0, False))
-                frames.append(_cell_frame(idx, stops))
+                    gm, gM = min(g.values()), max(g.values())
+                    t = (g[(wi, row)] - gm) / (gM - gm) if gM > gm else 0.0
+                    base = offsets[i] + t * ((wave.duration + wave.gap) * 1000 - d)
+                    ident = wave.scale == 1 and wave.dy == 0 and wave.rotate == 0
+                    stops.append(_stop(base / total * 100, "var(--o)", "none"))
+                    stops.append(_stop((base + d / 2) / total * 100, refl[i],
+                                       None if ident else f"var(--t{i})"))
+                    stops.append(_stop((base + d) / total * 100, "var(--o)", "none"))
+                frames.append(f"@keyframes c{idx}{{{''.join(stops)}}}")
     return (
         "<style>" + head + "".join(frames) +
         "@media (prefers-reduced-motion: reduce){.cell-wave{animation:none!important;}}"
@@ -369,8 +364,13 @@ def calendar_to_svg(weeks, animate="wave", theme="dark-green", waves=None):
         f'font-family="{FONT}" role="img" aria-label="Contribution calendar">'
     ]
 
+    present = set()
+    for wi, week in enumerate(weeks):
+        days = week.get("contributionDays", week) if isinstance(week, dict) else week
+        for day in days:
+            present.add(wi * 7 + (date.fromisoformat(day["date"]).weekday() + 1) % 7)
     if animate == "wave":
-        parts.append(waves_css(wave_list, palette, n_weeks))
+        parts.append(waves_css(wave_list, palette, n_weeks, present))
         multi = len(wave_list) > 1
         total_s = sum((w.duration + w.gap) for w in wave_list) if multi else 0
 
@@ -410,32 +410,31 @@ def calendar_to_svg(weeks, animate="wave", theme="dark-green", waves=None):
             row = (day_date.weekday() + 1) % 7
             x = GUTTER_W + wi * PITCH
             y = MONTH_H + row * PITCH
-            tip = escape(tooltip(day_date, count))
             if animate == "wave" and not multi:
                 wave = wave_list[0]
                 delay = wave_delays(wave, n_weeks)[(wi, row)]
                 parts.append(
                     f'<rect x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="{RX}" '
                     f'fill="{color}" class="cell-wave" '
-                    f'style="--orig:{color};animation-delay:{delay:g}ms" '
+                    f'style="--o:{color};animation-delay:{delay:g}ms" '
                     f'data-date="{day_date.isoformat()}" '
-                    f'data-count="{count}"><title>{tip}</title></rect>'
+                    f'data-count="{count}"/>'
                 )
             elif animate == "wave":
                 idx = wi * 7 + row
                 parts.append(
                     f'<rect x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="{RX}" '
                     f'fill="{color}" class="cell-wave" '
-                    f'style="--orig:{color};animation:cell{idx} {total_s:g}s '
+                    f'style="--o:{color};animation:c{idx} {total_s:g}s '
                     f'normal infinite" '
                     f'data-date="{day_date.isoformat()}" '
-                    f'data-count="{count}"><title>{tip}</title></rect>'
+                    f'data-count="{count}"/>'
                 )
             else:
                 parts.append(
                     f'<rect x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="{RX}" '
                     f'fill="{color}" data-date="{day_date.isoformat()}" '
-                    f'data-count="{count}"><title>{tip}</title></rect>'
+                    f'data-count="{count}"/>'
                 )
 
     # Legende Less + 5 niveaux + More

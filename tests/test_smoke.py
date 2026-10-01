@@ -42,7 +42,7 @@ def test_wave_injects_style_once():
 def test_wave_delay_diagonal():
     out = svg.calendar_to_svg(_weeks(), animate="wave", theme="green")
     # wi=0,row=1 (lundi 28/09) -> 0*35+1*65=65 ; wi=0,row=2 -> 130
-    assert "--orig:#eff2f5;animation-delay:65ms" in out
+    assert "--o:#eff2f5;animation-delay:65ms" in out
     assert "animation-delay:130ms" in out
     # wi=1,row=1 (lundi 05/10) -> 1*35+1*65=100
     assert "animation-delay:100ms" in out
@@ -50,7 +50,7 @@ def test_wave_delay_diagonal():
 
 def test_wave_orig_matches_fill():
     out = svg.calendar_to_svg(_weeks(), animate="wave", theme="green")
-    assert 'fill="#eff2f5" class="cell-wave" style="--orig:#eff2f5;' in out
+    assert 'fill="#eff2f5" class="cell-wave" style="--o:#eff2f5;' in out
 
 
 def test_themes_registered():
@@ -213,11 +213,11 @@ def test_wave_invert_mirrors():
 
 
 def _keyframes(out):
-    """{nom: [(offset%, fill, transform)]} pour chaque @keyframes cell{idx}."""
+    """{nom: [(offset%, fill, transform)]} pour chaque @keyframes c{idx}."""
     import re
     rules = {}
-    for name, body in re.findall(
-            r"@keyframes (cell?\d+)(\{.*?)(?=@keyframes cell?\d+|\Z)", out, re.S):
+    for name, body in re.findall(r"@keyframes (c\d+)(\{.*?)(?=@keyframes c|\Z)",
+                                 out, re.S):
         rules[name] = [
             (float(p), f, t)
             for p, f, t in re.findall(
@@ -228,7 +228,7 @@ def _keyframes(out):
 
 def _assert_monotonic(rules):
     """Chrome trie les keyframes par offset (dernier gagne a egalite) :
-    un offset decroissant ou > 100% est un bug de rendu."""
+    tout offset decroissant ou > 100% est un bug de rendu."""
     for name, stops in rules.items():
         pcts = [s[0] for s in stops]
         assert all(b >= a for a, b in zip(pcts, pcts[1:])), \
@@ -249,36 +249,17 @@ def test_wave_chain_offsets():
                               waves=waves)
     # cycle total boucle : 5s + 5s = 10s, tranches 0-40% puis 50-80%,
     # 1 keyframes par case sur l'element contribution lui-meme.
-    assert "@keyframes cell0" in out
-    assert "animation:cell1 10s normal infinite" in out
-    stops = _assert_monotonic(_keyframes(out))["cell0"]
-    # chaque vague rend exactement un pic, et les deux sont ordonnees
-    peaks = [s[0] for s in stops if s[1].startswith("#")]
+    assert "@keyframes c1" in out
+    assert "animation:c1 10s normal infinite" in out
+    rules = _assert_monotonic(_keyframes(out))
+    # vague 0 : base + duration/2 puis base + duration
+    stops = rules["c1"]
+    assert stops[0][0] >= 0 and stops[2][0] == 41.5
+    # chaque vague expose exactement un pic de couleur propre
+    peaks = [s for s in stops if s[1].startswith("#")]
     assert len(peaks) == 2, peaks
-    assert peaks[0] < peaks[1], peaks
-    assert all(0 < p < 100 for p in peaks), peaks
     assert "opacity" not in out.split("</style>")[0]
     assert 'pointer-events="none"' not in out
-
-
-def test_multi_wave_offsets_monotonic_and_bounded():
-    """Non-regression Chrome : chaque vague reste confinee a son slot.
-
-    Avant, le decalage spatial etait ajoute tel quel a l'offset : 215 des
-    369 cases portaient un offset > 100% et une crete se faisait ecraser
-    par le stop 100% (pic de la vague 6 invisible sur une case).
-    """
-    import json
-    import os
-    path = os.path.join(os.path.dirname(__file__), os.pardir, "waves.json")
-    with open(path, encoding="utf-8") as f:
-        specs = json.load(f)["waves"]
-    out = svg.calendar_to_svg(_weeks(), animate="wave", theme="green",
-                              waves=specs)
-    rules = _assert_monotonic(_keyframes(out))
-    assert rules, "aucun keyframes genere"
-    for name, stops in rules.items():
-        assert len([s for s in stops if s[1].startswith("#")]) == 6, name
 
 
 def test_wave_chain_all_visible():
@@ -287,8 +268,41 @@ def test_wave_chain_all_visible():
     out = svg.calendar_to_svg(_weeks(), animate="wave", theme="blue",
                               waves=["diagonal(color=#ff0000)",
                                      "radial(color=#0000ff)"])
-    assert "@keyframes cell0" in out
+    assert "@keyframes c1" in out
     assert "#ff0000" in out.split("</style>")[0]
     assert "#0000ff" in out.split("</style>")[0]
-    # 1 rect par case (3 jours) + 5 legende, zero overlay
-    assert out.count("<rect") == out.count("<title>") + 5
+    # 1 rect anime par jour (3 jours), zero overlay, zero tooltip
+    assert out.count('class="cell-wave"') == 3
+    assert "<title>" not in out
+
+
+def test_multi_wave_offsets_monotonic_and_bounded():
+    """Non-regression Chrome : 6 vagues, chaque case confinee a son slot.
+    Avant, 215/369 cases avaient des offsets > 100% et cell364 perdait
+    sa crete (pic de la vague 6 ecrase par le stop 100%)."""
+    import json
+    import os
+    path = os.path.join(os.path.dirname(__file__), os.pardir, "waves.json")
+    with open(path, encoding="utf-8") as f:
+        specs = json.load(f)["waves"]
+    waves = [svg.parse_wave_spec(s) for s in specs]
+    assert len(waves) == 6, waves
+    out = svg.calendar_to_svg(_weeks(), animate="wave", theme="green",
+                              waves=specs)
+    rules = _assert_monotonic(_keyframes(out))
+    assert rules, "aucun keyframes genere"
+    for name, stops in rules.items():
+        peaks = [s for s in stops if s[1].startswith("#")]
+        assert len(peaks) == 6, f"{name}: {len(peaks)} pics au lieu de 6"
+
+
+def test_every_animated_cell_has_keyframes():
+    """Zeros rules mortes et zeros cases animees sans keyframes."""
+    import re
+    waves = ["diagonal(duration=4)",
+             "diagonal(duration=3,gap=2,invert=true)"]
+    out = svg.calendar_to_svg(_weeks(), animate="wave", theme="blue",
+                              waves=waves)
+    used = set(re.findall(r"animation:(c\d+)", out))
+    defined = set(_keyframes(out))
+    assert used == defined, (used ^ defined)

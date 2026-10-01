@@ -15,6 +15,9 @@ jobs:
       BOT_BRANCH: bot/refresh-contributions
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Necessaire pour rebaser le bot sur un main a jour.
+          fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
@@ -22,10 +25,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          # Avant generation : arbre propre, le switch ne peut pas ecraser
-          # les SVG. Repart de la branche bot distante (push fast-forward).
-          git fetch origin "$BOT_BRANCH" || true
-          git checkout -B "$BOT_BRANCH" "origin/$BOT_BRANCH" 2>/dev/null || git checkout -B "$BOT_BRANCH"
+          # fetch-depth: 0 a deja recupere origin/main et origin/$BOT_BRANCH.
+          # On repart de main a jour : le bot ne conserve que son commit SVG,
+          # jamais de code perime.
+          git checkout -B "$BOT_BRANCH" origin/main
       - name: Generate SVG
         env:
           GITHUB_TOKEN: ${{ secrets.CONTRIB_PAT || github.token }}
@@ -35,4 +38,10 @@ jobs:
           # dark-green est le theme par defaut -> contributions.svg (sans suffixe)
           git add -- contributions*.svg
           git diff --cached --quiet || git commit -m "chore: refresh contributions.svg"
-          git push -u origin "$BOT_BRANCH"
+          # La branche est reconstruite depuis origin/main : le push diverge
+          # de l'ancien bot, force-with-lease est obligatoire.
+          if git rev-parse --verify "origin/$BOT_BRANCH" >/dev/null 2>&1; then
+            git push --force-with-lease="refs/heads/$BOT_BRANCH:$(git rev-parse "origin/$BOT_BRANCH")" -u origin "$BOT_BRANCH"
+          else
+            git push -u origin "$BOT_BRANCH"
+          fi

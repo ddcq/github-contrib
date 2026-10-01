@@ -1,7 +1,7 @@
 [project]
 name = "github-contrib"
 version = "0.1.0"
-description = "Genere un SVG statique identique au calendrier de contributions GitHub (phase 1)"
+description = "Generate a static SVG identical to the GitHub contribution calendar (phase 1)"
 requires-python = ">=3.11"
 
 [build-system]

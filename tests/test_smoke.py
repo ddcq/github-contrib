@@ -43,10 +43,10 @@ def test_wave_injects_style_once():
 
 def test_wave_delay_diagonal():
     out = svg.calendar_to_svg(_weeks(), animate="wave", theme="green")
-    # wi=0,row=1 (lundi 28/09) -> 0*35+1*65=65 ; wi=0,row=2 -> 130
+    # wi=0,row=1 (Mon 28/09) -> 0*35+1*65=65 ; wi=0,row=2 -> 130
     assert "animation:wave0r1 4.5s normal infinite;animation-delay:65ms" in out
     assert "animation-delay:130ms" in out
-    # wi=1,row=1 (lundi 05/10) -> 1*35+1*65=100
+    # wi=1,row=1 (Mon 05/10) -> 1*35+1*65=100
     assert "animation-delay:100ms" in out
 
 
@@ -169,17 +169,17 @@ def test_row_dy_depends_on_row_and_scale():
     """Zoom centre sur l'horizon moyen (57 = centre de la 4e ligne)."""
     assert svg.HORIZON_Y == 57
     w = svg.parse_wave_spec("diagonal(scale=1.1,dy=0)")
-    # row 0 : centre 13+5=18 -> (18-57)*0.1 = -3.9
+    # row 0: centre 13+5=18 -> (18-57)*0.1 = -3.9
     assert svg.row_dy(w, 0) == pytest.approx(-3.9)
-    # row 3 : sur l'horizon -> pas d'ecart
+    # row 3: on the horizon -> no offset
     assert svg.row_dy(w, 3) == pytest.approx(0)
-    # symetrie lignes 0 et 6 autour de l'horizon
+    # rows 0 and 6 are symmetric around the horizon
     assert svg.row_dy(w, 6) == pytest.approx(-svg.row_dy(w, 0))
-    # dy reste un lift uniforme, identique sur toutes les lignes
+    # dy stays a uniform lift, identical on every row
     lift = svg.parse_wave_spec("diagonal(scale=1.3,dy=-5)")
     assert svg.row_dy(lift, 3) == pytest.approx(-5)
     assert svg.row_dy(lift, 3) - svg.row_dy(lift, 0) == pytest.approx(11.7)
-    # sy amplifie l'ecart a l'horizon sans toucher au lift
+    # sy amplifies the distance to the horizon without touching the lift
     amp = svg.parse_wave_spec("diagonal(scale=1.1,dy=-5,sy=2)")
     assert svg.row_dy(amp, 0) == pytest.approx(-5 + 2 * -3.9)
     assert svg.row_dy(amp, 3) == pytest.approx(-5)
@@ -196,18 +196,18 @@ def test_row_dy_scale_one_is_pure_lift():
 def test_wave_keyframes_per_row():
     out = svg.calendar_to_svg(_weeks(), animate="wave", theme="green")
     assert "@keyframes wave0r0" in out and "@keyframes wave0r6" in out
-    assert "translateY(-5px)" in out  # row 3 = horizon, dy brut
+    assert "translateY(-5px)" in out  # row 3 = horizon, raw dy
 
 
 def test_multi_wave_props_per_row():
     waves = ["diagonal(scale=1.2,dy=0)", "radial(scale=0.4,dy=0)"]
     out = svg.calendar_to_svg(_weeks(), animate="wave", theme="blue",
                               waves=waves)
-    # row 0 de la vague 0 : (18-57)*0.2 = -7.8
+    # row 0 of wave 0: (18-57)*0.2 = -7.8
     assert "--t0r0:translateY(-7.8px) scale(1.2) rotate(0deg);" in out
-    # row 3 (horizon) : dy nul -> translateY omis, mais scale reste
+    # row 3 (horizon): dy is zero -> translateY omitted, scale stays
     assert "--t0r3:scale(1.2) rotate(0deg);" in out
-    # fixture : row 1 et 2 seulement -> c1 utilise t0r1, c2 t0r2
+    # fixture: rows 1 and 2 only -> c1 uses t0r1, c2 t0r2
     assert "var(--t0r1)" in out
     assert "var(--t0r2)" in out
     assert "var(--t1r1)" in out
@@ -297,15 +297,15 @@ def test_wave_chain_offsets():
     assert svg.wave_offsets(waves) == [0, 5000.0]
     out = svg.calendar_to_svg(_weeks(), animate="wave", theme="blue",
                               waves=waves)
-    # cycle total boucle : 5s + 5s = 10s, tranches 0-40% puis 50-80%,
-    # 1 keyframes par case sur l'element contribution lui-meme.
+    # looping total cycle: 5s + 5s = 10s, slices 0-40% then 50-80%,
+    # 1 keyframes per cell on the contribution element itself.
     assert "@keyframes c1" in out
     assert "animation:c1 10s normal infinite" in out
     rules = _assert_monotonic(_keyframes(out))
-    # vague 0 : base + duration/2 puis base + duration
+    # wave 0: base + duration/2 then base + duration
     stops = rules["c1"]
     assert stops[0][0] >= 0 and stops[2][0] == 41.5
-    # chaque vague expose exactement un pic de couleur propre
+    # each wave exposes exactly one peak of its own color
     peaks = [s for s in stops if s[1].startswith("#")]
     assert len(peaks) == 2, peaks
     assert "opacity" not in out.split("</style>")[0]
@@ -313,15 +313,15 @@ def test_wave_chain_offsets():
 
 
 def test_wave_chain_all_visible():
-    # non-regression : chaque vague rend son pic sur la case (avant,
-    # overlays separes au lieu d'effets sur cases contributions)
+# regression guard: each wave renders its peak on the cell (previously,
+                              # separate overlays instead of effects on contribution cells)
     out = svg.calendar_to_svg(_weeks(), animate="wave", theme="blue",
                               waves=["diagonal(color=#ff0000)",
                                      "radial(color=#0000ff)"])
     assert "@keyframes c1" in out
     assert "#ff0000" in out.split("</style>")[0]
     assert "#0000ff" in out.split("</style>")[0]
-    # 1 rect anime par jour (3 jours), zero overlay, zero tooltip
+    # 1 animated rect per day (3 days), zero overlays, zero tooltips
     assert out.count('class="cell-wave"') == 3
     assert "<title>" not in out
 

@@ -1,6 +1,6 @@
-"""Generateur SVG pixel-proche du calendrier GitHub light mode."""
+"""SVG generator pixel-close to the GitHub light mode calendar."""
 
-# Palette Primer light verrouillee (ticket 02)
+# Locked Primer light palette (ticket 02)
 PALETTE = {
     "NONE": "#eff2f5",
     "FIRST_QUARTILE": "#aceebb",
@@ -15,14 +15,14 @@ PITCH = CELL + GAP
 RX = 2
 
 
-"""Generateur SVG pixel-proche du calendrier GitHub light mode."""
+"""SVG generator pixel-close to the GitHub light mode calendar."""
 
 from dataclasses import dataclass, field
 from datetime import date
 import math
 import re
 
-# Palette Primer light verrouillee (ticket 02)
+# Locked Primer light palette (ticket 02)
 PALETTE = {
     "NONE": "#eff2f5",
     "FIRST_QUARTILE": "#aceebb",
@@ -53,7 +53,7 @@ def _ordinal(n):
 
 
 def tooltip(day_date, count):
-    """Texte tooltip facon GitHub : 'N contributions on October 13th.'."""
+    """GitHub-style tooltip text: 'N contributions on October 13th.'."""
     full = f"{MONTHS_FULL[day_date.month - 1]} {day_date.day}{_ordinal(day_date.day)}"
     if count == 0:
         return f"No contributions on {full}."
@@ -107,7 +107,7 @@ THEMES = {
     },
 }
 
-# Fond + texte par theme (standard GitHub light/dark).
+# Background + text per theme (GitHub light/dark standard).
 THEME_BG = {
     "green": None,
     "blue": None,
@@ -149,7 +149,7 @@ WAVE_DELAY_ROW = 65
 WAVE_COMMON_KEYS = {"color", "scale", "dy", "sy", "rotate", "duration", "gap",
                     "invert", "direction"}
 
-# Ligne pivot du zoom : centre de la 4e ligne = 13 + 3*13 + 10/2 = 57.
+# Zoom pivot row: centre of the 4th row = 13 + 3*13 + 10/2 = 57.
 HORIZON_ROW = 3
 HORIZON_Y = MONTH_H + HORIZON_ROW * PITCH + CELL / 2
 ROWS = 7
@@ -200,9 +200,9 @@ class WaveSpec:
 
     def __post_init__(self):
         if self.shape not in SHAPES:
-            raise ValueError(f"Forme inconnue: {self.shape} (choix: {sorted(SHAPES)})")
+            raise ValueError(f"Unknown shape: {self.shape} (choices: {sorted(SHAPES)})")
         if self.rotate not in WAVE_ROTATIONS:
-            raise ValueError(f"Rotation invalide: {self.rotate} (choix: {sorted(WAVE_ROTATIONS)})")
+            raise ValueError(f"Invalid rotation: {self.rotate} (choices: {sorted(WAVE_ROTATIONS)})")
 
 
 DEFAULT_WAVES = [WaveSpec()]
@@ -232,10 +232,10 @@ def parse_wave_spec(spec):
         return spec
     m = _SPEC_RE.match(spec)
     if not m:
-        raise ValueError(f"Spec vague invalide: {spec!r}")
+        raise ValueError(f"Invalid wave spec: {spec!r}")
     shape, body = m.group(1), m.group(2)
     if shape not in SHAPES:
-        raise ValueError(f"Forme inconnue: {shape} (choix: {sorted(SHAPES)})")
+        raise ValueError(f"Unknown shape: {shape} (choices: {sorted(SHAPES)})")
     common, params = {}, {}
     if body and body.strip():
         for chunk in body.split(","):
@@ -243,7 +243,7 @@ def parse_wave_spec(spec):
             if not chunk:
                 continue
             if "=" not in chunk:
-                raise ValueError(f"Param sans '=' dans {spec!r}: {chunk!r}")
+                raise ValueError(f"Param without '=' in {spec!r}: {chunk!r}")
             k, v = chunk.split("=", 1)
             k, v = k.strip(), _parse_value(v)
             (common if k in WAVE_COMMON_KEYS else params)[k] = v
@@ -251,7 +251,7 @@ def parse_wave_spec(spec):
 
 
 def wave_delays(wave, n_weeks):
-    """Delais ms (wi,row) pour une vague sur grille n_weeks x 7."""
+    """Delays ms (wi,row) for one wave over an n_weeks x 7 grid."""
     fn = SHAPES[wave.shape]
     grid = {(wi, row): fn(wi, row, n_weeks, wave.params)
             for wi in range(n_weeks) for row in range(7)}
@@ -262,31 +262,31 @@ def wave_delays(wave, n_weeks):
 
 
 def row_dy(wave, row):
-    """Decalage vertical du pic pour `row` : dy + sy*(centre-horizon)*(scale-1).
+    """Peak vertical offset for `row`: dy + sy*(centre-horizon)*(scale-1).
 
-    Le zoom part de l'horizon moyen (centre de la 4e ligne) : plus la case
-    est loin de l'horizon, plus le scale l'entraine. `dy` reste un lift
-    uniforme, `sy` regle l'intensite de l'ecart a l'horizon.
+    The zoom pivots on the mean horizon (centre of the 4th row): the further
+    a cell is from the horizon, the more scale pulls it. `dy` stays a uniform
+    lift, `sy` tunes how strongly the distance to the horizon applies.
     """
     centre = MONTH_H + row * PITCH + CELL / 2
     return wave.dy + wave.sy * (centre - HORIZON_Y) * (wave.scale - 1)
 
 
 def peak_transform(wave, row):
-    """Transform du pic pour `row`, ou None si identity (0 octet)."""
+    """Peak transform for `row`, or None if identity (0 bytes)."""
     dy = row_dy(wave, row)
     if wave.scale == 1 and dy == 0 and wave.rotate == 0:
         return None
-    # translateY(0px) = identity, on l'omet (economie sur 7 lignes).
-    # translateY AVANT scale : le dy est un offset ecran, pas multiplie
-    # par le scale. Effet de bord assume : pour rotate=90/-90 le dy ne
-    # suit plus la rotation (avant, il l suivait).
+    # translateY(0px) is the identity, omitted (saves 7 lines).
+    # translateY BEFORE scale: dy is a screen offset, not scaled.
+    # Accepted side effect: for rotate=90/-90 dy no longer follows the
+    # rotation (it used to).
     ty = f"translateY({dy:g}px) " if dy else ""
     return f"{ty}scale({wave.scale:g}) rotate({wave.rotate}deg)"
 
 
 def _wave_frame(name, reflect, tf):
-    """Un @keyframes {name} pour 1 vague seule (transform = None = identity)."""
+    """One @keyframes {name} for a single wave (transform = None = identity)."""
     peak = "" if tf is None else f"transform:{tf};"
     return (
         f"@keyframes {name}{{0%,14%,100%{{fill:var(--o);transform:none}}"
@@ -295,35 +295,34 @@ def _wave_frame(name, reflect, tf):
 
 
 def _stop(pct, fill, tf):
-    # `transform:none` vaut l'identite explicite (verifie : memes matrices
-    # de transformation) et evite 31 octets de `scale(1) translateY(0)`.
-    # Ne jamais omettre la propriete (sauf pic identite, tf=None) : Chrome
-    # vide alors la cle de keyframe et reconstruit la rampe depuis 0%.
+    # `transform:none` is the explicit identity (verified: same transformation
+    # matrices) and saves 31 bytes over `scale(1) translateY(0)`.
+    # Never omit the property (except identity peak, tf=None): Chrome empties
+    # the keyframe rule and rebuilds the ramp from 0%.
     prop = "" if tf is None else f"transform:{tf};"
     return f"{pct:.1f}%{{fill:{fill};{prop}}}"
 
 
 def waves_css(waves, palette, n_weeks=0, cells=None):
-    """Bloc <style> : animations vague sur les cases elles-memes.
+    """<style> block: wave animations on the cells themselves.
 
-    1 vague : anime fill direct (look legacy). N vagues : 1 @keyframes
-    c{idx} par case, tranches sequentielles bouclees (N animations
-    fill sur meme element se recouvrent : seule la derniere serait
-    visible, d'ou un seul keyframes par case).
-    Cycle total boucle sum(durations+gaps). Direction multi = normal.
+    1 wave: animates fill directly (legacy look). N waves: 1 @keyframes
+    c{idx} per cell, sequential looping slices (N fill animations on the
+    same element overlap: only the last would be visible, hence one keyframes
+    per cell).
+    Looping total cycle sum(durations+gaps). Multi direction = normal.
 
-    Les offsets doivent etre non decroissants (Chrome trie les keyframes
-    par offset, en gardant le dernier en cas d'egalite) : chaque vague
-    est donc confinee a son slot [offset_i, offset_i + duration_i + gap_i].
-    Le decalage spatial est normalise dans cette largeur au lieu d'etre
-    ajoute tel quel, ce qui garantit 0 chevauchement, 0 offset > 100% et
-    0 collision de crête.
+    Offsets must be non-decreasing (Chrome sorts keyframes by offset,
+    keeping the last on ties): each wave is therefore confined to its slot
+    [offset_i, offset_i + duration_i + gap_i]. The spatial delay is normalised
+    into that width instead of being added as-is, which guarantees 0 overlap,
+    0 offset > 100% and 0 peak collision.
     """
     if len(waves) == 1:
         wave = waves[0]
         reflect = wave.color or palette["FOURTH_QUARTILE"]
         head = ".cell-wave{transform-box:fill-box;transform-origin:center;}"
-        # 1 jeu de keyframes par ligne : le pic depends de row (row_dy).
+        # 1 keyframes set per row: the peak depends on row (row_dy).
         frames = [_wave_frame(f"wave0r{row}", reflect, peak_transform(wave, row))
                   for row in range(ROWS)]
     else:
@@ -332,8 +331,8 @@ def waves_css(waves, palette, n_weeks=0, cells=None):
         grids = [wave_delays(w, n_weeks) for w in waves]
         refl = [w.color or palette["FOURTH_QUARTILE"] for w in waves]
         head = ".cell-wave{transform-box:fill-box;transform-origin:center;}"
-        # transforms pics hissees une fois (custom props), pas par case.
-        # 1 prop par (vague, ligne) : le pic depend de row (row_dy).
+        # Peak transforms hoisted once (custom props), not per cell.
+        # 1 prop per (wave, row): the peak depends on row (row_dy).
         head += ":root{" + "".join(
             f"--t{i}r{row}:{tf};" for i, w in enumerate(waves)
             for row, tf in ((r, peak_transform(w, r)) for r in range(ROWS))
@@ -365,7 +364,7 @@ def waves_css(waves, palette, n_weeks=0, cells=None):
 
 
 def wave_offsets(waves):
-    """Offset ms demarrage chaque vague (cumul durations+gaps)."""
+    """Start offset ms per wave (running total of durations+gaps)."""
     offsets, cursor = [], 0.0
     for wave in waves:
         offsets.append(cursor)
@@ -374,12 +373,13 @@ def wave_offsets(waves):
 
 
 def calendar_to_svg(weeks, animate="wave", theme="dark-green", waves=None):
-    """Convertit weeks (liste de {contributionDays:[...]}) en str SVG."""
+    """Convert weeks (list of {contributionDays:[...]}) into an SVG string."""
     palette = THEMES.get(theme, THEMES["dark-green"])
     bg = THEME_BG.get(theme)
     fg = THEME_FG.get(theme, "#1f2328")
-    # Theme green garde couleur API (identique palette legacy).
-    # Autres themes mappent level -> palette (sinon API verte écrase theme).
+    # The green theme keeps the API color (identical to the legacy palette).
+    # Other themes map level -> palette (otherwise the green API color
+    # would override the theme).
     keep_api = (theme == "green")
     wave_list = [parse_wave_spec(w) for w in waves] if waves else DEFAULT_WAVES
     n_weeks = len(weeks)
@@ -407,7 +407,7 @@ def calendar_to_svg(weeks, animate="wave", theme="dark-green", waves=None):
     if bg:
         parts.append(f'<rect width="{width}" height="{height}" fill="{bg}"/>')
 
-    # Labels mois : premier week ou le mois change
+    # Month labels: first week where the month changes
     seen_month = None
     for wi, week in enumerate(weeks):
         days = week.get("contributionDays", week) if isinstance(week, dict) else week
@@ -415,7 +415,7 @@ def calendar_to_svg(weeks, animate="wave", theme="dark-green", waves=None):
             continue
         first = date.fromisoformat(days[0]["date"])
         if first.month != seen_month and not (wi > 0 and first.month == seen_month):
-            # evite doublons : label seulement au changement de mois
+            # avoid duplicates: label only on month change
             if first.month != seen_month:
                 x = GUTTER_W + wi * PITCH
                 parts.append(
@@ -424,19 +424,19 @@ def calendar_to_svg(weeks, animate="wave", theme="dark-green", waves=None):
                 )
                 seen_month = first.month
 
-    # Labels jours Mon/Wed/Fri
+    # Day labels Mon/Wed/Fri
     for row, label in DAY_LABELS.items():
         y = MONTH_H + row * PITCH + CELL - 1
         parts.append(
             f'<text x="0" y="{y}" font-size="9" fill="{fg}">{label}</text>'
         )
 
-    # Cellules
+    # Cells
     for wi, week in enumerate(weeks):
         days = week.get("contributionDays", week) if isinstance(week, dict) else week
         for day in days:
             day_date, count, color = _parse_day(day, palette, keep_api)
-            # ligne = weekday GitHub (dimanche=0) ; fromisoformat.weekday() lundi=0
+            # row = GitHub weekday (Sunday=0); fromisoformat.weekday() is Monday=0
             row = (day_date.weekday() + 1) % 7
             x = GUTTER_W + wi * PITCH
             y = MONTH_H + row * PITCH
@@ -469,7 +469,7 @@ def calendar_to_svg(weeks, animate="wave", theme="dark-green", waves=None):
                     f'data-count="{count}"/>'
                 )
 
-    # Legende Less + 5 niveaux + More
+    # Legend Less + 5 levels + More
     ly = MONTH_H + grid_h + 6
     lx = width - (4 * len("Less More") + 5 * PITCH + 30)
     lx = max(GUTTER_W, lx)

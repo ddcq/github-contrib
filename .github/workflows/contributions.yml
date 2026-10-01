@@ -16,30 +16,36 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          # Necessaire pour rebaser le bot sur un main a jour.
+          # Needed to reset the bot branch against an up-to-date main.
           fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
-      - name: Prepare bot branch
+      - name: Reset bot branch on main
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          # fetch-depth: 0 a deja recupere origin/main et origin/$BOT_BRANCH.
-          # On repart de main a jour : le bot ne conserve que son commit SVG,
-          # jamais de code perime.
+          # Reset, not rebase: the bot commits are not replayed on top of main,
+          # they are dropped. The branch will only carry this run's SVG
+          # commit, the code comes entirely from origin/main.
+          # fetch-depth: 0 provides origin/main and origin/$BOT_BRANCH.
           git checkout -B "$BOT_BRANCH" origin/main
+          git reset --hard origin/main
+          # SVGs are regenerated: a file present on main but absent from this
+          # run's output is removed from the working tree and the commit.
+          git clean -fd
       - name: Generate SVG
         env:
           GITHUB_TOKEN: ${{ secrets.CONTRIB_PAT || github.token }}
-        run: PYTHONPATH=src python -m github_contrib --login ddcq --out contributions.svg --waves-file waves.json
+        run: PYTHONPATH=src python -m github_contrib --login ddcq --out assets/contributions.svg --waves-file waves.json
       - name: Commit SVG
         run: |
-          # dark-green est le theme par defaut -> contributions.svg (sans suffixe)
-          git add -- contributions*.svg
+          # dark-green is the default theme -> contributions.svg (no suffix)
+          git add -- assets/contributions*.svg
           git diff --cached --quiet || git commit -m "chore: refresh contributions.svg"
-          # La branche est reconstruite depuis origin/main : le push diverge
-          # de l'ancien bot, force-with-lease est obligatoire.
+          # The bot history is dropped -> push is not fast-forward, force is
+          # mandatory. force-with-lease + expected SHA: refuses to overwrite
+          # a branch someone pushed in the meantime.
           if git rev-parse --verify "origin/$BOT_BRANCH" >/dev/null 2>&1; then
             git push --force-with-lease="refs/heads/$BOT_BRANCH:$(git rev-parse "origin/$BOT_BRANCH")" -u origin "$BOT_BRANCH"
           else

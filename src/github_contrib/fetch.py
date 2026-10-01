@@ -1,4 +1,4 @@
-"""Fetch GraphQL ContributionsCollection + cache JSON (stdlib only)."""
+"""Fetch GraphQL ContributionsCollection + JSON cache (stdlib only)."""
 
 import json
 import os
@@ -31,7 +31,7 @@ query($login: String! $from: DateTime $to: DateTime) {
 
 
 def _ssl_context():
-    """Contexte SSL avec bundle certifi si dispo (Python.org macOS)."""
+    """SSL context using the certifi bundle when available (Python.org macOS)."""
     try:
         import certifi
 
@@ -41,17 +41,17 @@ def _ssl_context():
 
 
 def resolve_token(explicit=None):
-    """Priorité : --token > GITHUB_TOKEN > GITHUB_DDCQ_READ."""
+    """Priority: --token > GITHUB_TOKEN > GITHUB_DDCQ_READ."""
     if explicit:
         return explicit
     return os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_DDCQ_READ")
 
 
 def fetch_calendar(login, from_iso=None, to_iso=None, token=None):
-    """Interroge l'API GraphQL et retourne le dict contributionsCollection."""
+    """Queries the GraphQL API and returns the contributionsCollection dict."""
     token = resolve_token(token)
     if not token:
-        raise RuntimeError("Token manquant (--token, GITHUB_TOKEN ou GITHUB_DDCQ_READ)")
+        raise RuntimeError("Missing token (--token, GITHUB_TOKEN or GITHUB_DDCQ_READ)")
     variables = {"login": login, "from": from_iso, "to": to_iso}
     body = json.dumps({"query": QUERY, "variables": variables}).encode()
     req = urllib.request.Request(
@@ -69,18 +69,18 @@ def fetch_calendar(login, from_iso=None, to_iso=None, token=None):
         raise RuntimeError(f"GraphQL errors: {payload['errors']}")
     user = (payload.get("data") or {}).get("user")
     if user is None:
-        raise RuntimeError(f"Utilisateur introuvable: {login}")
+        raise RuntimeError(f"User not found: {login}")
     return user["contributionsCollection"]
 
 
 def load_cache(path):
-    """Charge un cache JSON local."""
+    """Loads a local JSON cache."""
     with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
 def save_cache(path, payload):
-    """Sauve la reponse brute en JSON."""
+    """Saves the raw response as JSON."""
     directory = os.path.dirname(path)
     if directory:
         os.makedirs(directory, exist_ok=True)

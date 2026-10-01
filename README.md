@@ -1,174 +1,174 @@
 # github-contrib
 
-![contributions](https://raw.githubusercontent.com/ddcq/github-contrib/main/contributions.svg)
+![contributions](https://raw.githubusercontent.com/ddcq/github-contrib/main/assets/contributions.svg)
 
-Calendrier de contributions GitHub généré depuis GraphQL `ContributionsCollection` (user `ddcq`), avec vague animée et 6 thèmes couleur.
+GitHub contribution calendar generated from GraphQL `ContributionsCollection` (user `ddcq`), with an animated wave and 6 colour themes.
 
-| Thème | Fichier | Aperçu |
+| Theme | File | Preview |
 |---|---|---|
-| dark-green (défaut) | `contributions.svg` | ![dark-green](https://raw.githubusercontent.com/ddcq/github-contrib/main/contributions.svg) |
-| green (legacy) | `contributions-green.svg` | ![green](https://raw.githubusercontent.com/ddcq/github-contrib/main/contributions-green.svg) |
-| blue | `contributions-blue.svg` | ![blue](https://raw.githubusercontent.com/ddcq/github-contrib/main/contributions-blue.svg) |
-| dark-blue | `contributions-dark-blue.svg` | ![dark-blue](https://raw.githubusercontent.com/ddcq/github-contrib/main/contributions-dark-blue.svg) |
-| red | `contributions-red.svg` | ![red](https://raw.githubusercontent.com/ddcq/github-contrib/main/contributions-red.svg) |
-| dark-red | `contributions-dark-red.svg` | ![dark-red](https://raw.githubusercontent.com/ddcq/github-contrib/main/contributions-dark-red.svg) |
+| dark-green (default) | `assets/contributions.svg` | ![dark-green](https://raw.githubusercontent.com/ddcq/github-contrib/main/assets/contributions.svg) |
+| green (legacy) | `assets/contributions-green.svg` | ![green](https://raw.githubusercontent.com/ddcq/github-contrib/main/assets/contributions-green.svg) |
+| blue | `assets/contributions-blue.svg` | ![blue](https://raw.githubusercontent.com/ddcq/github-contrib/main/assets/contributions-blue.svg) |
+| dark-blue | `assets/contributions-dark-blue.svg` | ![dark-blue](https://raw.githubusercontent.com/ddcq/github-contrib/main/assets/contributions-dark-blue.svg) |
+| red | `assets/contributions-red.svg` | ![red](https://raw.githubusercontent.com/ddcq/github-contrib/main/assets/contributions-red.svg) |
+| dark-red | `assets/contributions-dark-red.svg` | ![dark-red](https://raw.githubusercontent.com/ddcq/github-contrib/main/assets/contributions-dark-red.svg) |
 
-## Prérequis
+## Requirements
 
-- Python ≥ 3.11 (workflow : 3.13)
-- Token GitHub pour fetch API (sinon `--no-fetch` + cache local `data/contributions.json`)
+- Python >= 3.11 (workflow: 3.13)
+- GitHub token for the API fetch (otherwise `--no-fetch` + local cache `data/contributions.json`)
 
 ```bash
 export GITHUB_TOKEN=...
-PYTHONPATH=src python3 -m github_contrib --login ddcq --out contributions.svg --no-fetch
+PYTHONPATH=src python3 -m github_contrib --login ddcq --out assets/contributions.svg --no-fetch
 ```
 
-## Options CLI
+## CLI options
 
 ```
---login LOGIN            user GitHub (défaut ddcq)
---out OUT                fichier base (défaut contributions.svg)
---cache CACHE            cache JSON (défaut data/contributions.json)
---from FROM_ISO          borne début (optionnel, ex. 2024-10-01T00:00:00Z)
---to TO_ISO              borne fin (optionnel)
---token TOKEN            override GITHUB_TOKEN / GITHUB_DDCQ_READ
---animate {wave,none}    wave (défaut) ou none = statique Phase1 byte-identique
+--login LOGIN            GitHub user (default ddcq)
+--out OUT                base file path (default assets/contributions.svg)
+--cache CACHE            JSON cache (default data/contributions.json)
+--from FROM_ISO          start bound (optional, ex. 2024-10-01T00:00:00Z)
+--to TO_ISO              end bound (optional)
+--token TOKEN            overrides GITHUB_TOKEN / GITHUB_DDCQ_READ
+--animate {wave,none}    wave (default) or none = byte-identical static Phase1
 --theme {all,dark-green,green,blue,dark-blue,red,dark-red}
-                         all (défaut) = 6 fichiers, sinon 1 seul vers --out
---wave SPEC              DSL vague, répétable pour chaînage (défaut diagonal).
+                         all (default) = 6 files, otherwise 1 file at --out
+--wave SPEC              wave DSL, repeatable for chaining (default diagonal).
                          Ex. "diagonal(color=#116329,scale=1.3,dy=-5)"
---waves-file JSON        fichier {"waves": ["diagonal", "radial(invert=true)"]},
-                         combiné avec --wave (fichier d'abord, CLI ensuite)
---no-fetch               utilise cache local, aucun appel API
+--waves-file JSON        file {"waves": ["diagonal", "radial(invert=true)"]},
+                         combined with --wave (file first, CLI after)
+--no-fetch               uses the local cache, no API call
 ```
 
-Priorité token : `--token` > `GITHUB_TOKEN` > `GITHUB_DDCQ_READ` > cache seul.
+Token priority: `--token` > `GITHUB_TOKEN` > `GITHUB_DDCQ_READ` > cache only.
 
-## Thèmes
+## Themes
 
-`--theme all` (défaut) écrit 6 fichiers : `--out` tel quel pour `dark-green` + suffixes `-green`, `-blue`, `-dark-blue`, `-red`, `-dark-red` avant extension. `--theme X` écrit 1 seul fichier vers `--out` exact.
+`--theme all` (default) writes 6 files: `--out` as-is for `dark-green` plus the `-green`, `-blue`, `-dark-blue`, `-red`, `-dark-red` suffixes before the extension. `--theme X` writes 1 file to the exact `--out` path.
 
-| Thème | Fond | Texte | NONE | L1 | L2 | L3 | L4 (= reflet vague défaut) |
+| Theme | Background | Text | NONE | L1 | L2 | L3 | L4 (= default wave reflect) |
 |---|---|---|---|---|---|---|---|
-| dark-green (défaut, GitHub dark officiel) | `#0d1117` | `#e6edf3` | `#161b22` | `#0e4429` | `#006d32` | `#26a641` | `#39d353` |
+| dark-green (default, official GitHub dark) | `#0d1117` | `#e6edf3` | `#161b22` | `#0e4429` | `#006d32` | `#26a641` | `#39d353` |
 | green (legacy) | transparent | `#1f2328` | `#eff2f5` | `#aceebb` | `#4ac26b` | `#2da44e` | `#116329` |
-| blue (Winter light officiel) | transparent | `#1f2328` | `#eff2f5` | `#b6e3ff` | `#54aeff` | `#0969da` | `#0a3069` |
-| dark-blue (Winter dark officiel) | `#0d1117` | `#e6edf3` | `#161b22` | `#0a3069` | `#0969da` | `#54aeff` | `#b6e3ff` |
+| blue (official Winter light) | transparent | `#1f2328` | `#eff2f5` | `#b6e3ff` | `#54aeff` | `#0969da` | `#0a3069` |
+| dark-blue (official Winter dark) | `#0d1117` | `#e6edf3` | `#161b22` | `#0a3069` | `#0969da` | `#54aeff` | `#b6e3ff` |
 | red | transparent | `#1f2328` | `#eff2f5` | `#ffebe9` | `#ffb3b0` | `#e94a3f` | `#a40e26` |
 | dark-red | `#0d1117` | `#e6edf3` | `#161b22` | `#5c0a0e` | `#a40e26` | `#e94a3f` | `#ffb3b0` |
 
-Règle couleur cases :
-- `green` (legacy) garde `color` API GitHub si présent → sortie Phase1 inchangée.
-- autres thèmes mappent `contributionLevel` → palette (sinon vert API écraserait thème).
-- légende `Less/More` suit palette thème.
+Cell colour rules:
+- `green` (legacy) keeps the GitHub API `color` when present, so Phase1 output is unchanged.
+- other themes map `contributionLevel` to the palette (otherwise the green API colour would override the theme).
+- the `Less/More` legend follows the theme palette.
 
-## Animation vagues (moteur v2)
+## Wave animation (engine v2)
 
-CSS pur, sans JS (compatible `<img>` README).
+Pure CSS, no JS (works in a README `<img>`).
 
-- 1 vague : `fill` case animé direct (look legacy).
-- N vagues : 1 `@keyframes c{idx}` par case sur l'élément contribution lui-même, tranches séquentielles bouclées (N animations `fill` partagées se recouvrent : seule la dernière serait visible). Pics exacts par case : délai formé intégré aux pourcentages.
-- `direction` honored 1 vague ; multi toujours `normal`.
-- `animation-delay` inline par case = délai formé (`invert` inclus).
+- 1 wave: animates the cell `fill` directly (legacy look).
+- N waves: 1 `@keyframes c{idx}` per cell on the contribution element itself, sequential looping slices (N shared `fill` animations on the same element overlap: only the last would be visible). Exact per-cell peaks: the shaped delay is baked into the percentages.
+- `direction` is honoured for 1 wave; always `normal` for multi.
 
-- Chaînage séquentiel en boucle : cycle total = somme durations+gaps, chaque vague occupe sa tranche puis boucle vers la première. `gap` = pause entre vagues (ex. config `waves.json` : cycle 33.5s).
-- Keyframes par vague : tranche `[offset, offset+duration]`, pic à mi-tranche. 1 seule vague = look legacy (flash 7%/14%).
-- Keyframes par vague : `0%,14%,100%` = couleur origine, `7%` = reflet. Durée propre par vague (`duration`, défaut `4.5s`), `gap` après vague (défaut `1.0s`).
-- `invert=true` = miroir délai (vague inverse), `direction` CSS séparé (`normal`, défaut).
-- `prefers-reduced-motion: reduce` → animation coupée (`!important` : le `animation` inline des cases l'outrankait). Légende exclue, grille seule.
-- `transform-box: fill-box; transform-origin: center` : zoom/lift centrés par case.
-- Paliers en `transform:none` (= identité, 14 o au lieu de 45), pourcentages à 1 décimale et nom de variable `--o` : −30% raw, −47% gzip. Ne jamais **omettre** `fill` ni `transform` d'un palier : Chrome vide la keyframe et reconstruit la rampe depuis 0% (crête aplatie).
-- Transforms de pic hissés une fois en `:root` (`--t0`, `--t1`…) au lieu d'être répétés dans les 371 keyframes.
-- **Offsets non décroissants obligatoires** : Chrome trie les keyframes par offset et garde le dernier en cas d'égalité. Le délai spatial est donc *normalisé* dans la largeur du slot (`offset + t·(duration+gap−duration)`) au lieu d'être ajouté tel quel : 0 chevauchement, 0 offset > 100%, 0 collision de crête. Vérifié par `test_multi_wave_offsets_monotonic_and_bounded`.
-- Pas de `<title>` par case : Chrome repeint les nœuds texte avec le `fill` animé (24 → 24 fps sur un calendrier dense) et un SVG chargé via `<img>` n'affiche de toute façon aucun tooltip. Vérifié : tooltips absents à l'identique avec/sans.
+- Sequential looping chain: total cycle = sum of durations+gaps, each wave takes its slice then loops back to the first. `gap` = pause between waves (ex. `waves.json` config: 33.5s cycle).
+- Keyframes per wave: slice `[offset, offset+duration]`, peak at mid-slice. A single wave = legacy look (7%/14% flash).
+- Keyframes per wave: `0%,14%,100%` = base colour, `7%` = reflect. Per-wave duration (`duration`, default `4.5s`), `gap` after the wave (default `1.0s`).
+- `invert=true` = mirrored delay (wave runs backwards), `direction` is a separate CSS property (`normal`, default).
+- `prefers-reduced-motion: reduce` -> animation cut off (`!important`: the per-cell inline `animation` used to outrank it). Legend excluded, grid only.
+- `transform-box: fill-box; transform-origin: center`: zoom/lift centred per cell.
+- Stops use `transform:none` (= identity, 14 bytes instead of 45), percentages to 1 decimal and the `--o` variable name: -30% raw, -47% gzip. Never **omit** `fill` or `transform` from a stop: Chrome empties the keyframe rule and rebuilds the ramp from 0% (flattened peak).
+- Peak transforms hoisted once into `:root` (`--t0`, `--t1`, ...) instead of being repeated across the 371 keyframes.
+- **Non-decreasing offsets are mandatory**: Chrome sorts keyframes by offset and keeps the last one on ties. The spatial delay is therefore *normalised* into the slot width (`offset + t*(duration+gap-duration)`) instead of being added as-is: 0 overlap, 0 offset > 100%, 0 peak collision. Verified by `test_multi_wave_offsets_monotonic_and_bounded`.
+- No per-cell `<title>`: Chrome repaints the text nodes with the animated `fill` (24 -> 24 fps on a dense calendar), and an SVG loaded through `<img>` shows no tooltip anyway. Verified: tooltips absent either way.
 
-### Mesures (thème dark-green, 53 semaines / 369 cases)
+### Measurements (dark-green theme, 53 weeks / 369 cells)
 
-| | avant | après | gain |
+| | before | after | gain |
 |---|---|---|---|
-| raw | 464 634 o | **322 179 o** | −30.7% |
-| gzip-6 (ce que GitHub sert) | 27 557 o | **14 657 o** | −46.8% |
+| raw | 464,634 bytes | **322,179 bytes** | -30.7% |
+| gzip-6 (what GitHub serves) | 27,557 bytes | **14,657 bytes** | -46.8% |
 
-GitHub sert le SVG **compressé en gzip niveau 6** (Fastly, `vary: Accept-Encoding`, fichier servi tel quel). Mesurer en gzip-9 sous-estime d'environ 13% le poids réel sur le fil.
+GitHub serves the SVG **gzipped at level 6** (Fastly, `vary: Accept-Encoding`, file served as-is). Measuring at gzip-9 underestimates the real on-the-wire weight by about 13%.
 
-### Formes (`shape`, délai `f(wi,row)`)
+### Shapes (`shape`, delay `f(wi,row)`)
 
-| Forme | Formule | Params (défauts) |
+| Shape | Formula | Params (defaults) |
 |---|---|---|
-| `diagonal` (défaut) | `wi*col + row*idx` | `col=35`, `row=65` |
-| `linear` | `wi*step` (horizontale) | `step=80` |
-| `radial` | `dist((wi,row),(cx,cy))*step` (ronde, centre grille) | `step=60`, `cx`/`cy` auto |
-| `sine` (poisson) | `wi*step + sin(row*freq)*amp` | `step=80`, `freq=1.0`, `amp=120` |
+| `diagonal` (default) | `wi*col + row*idx` | `col=35`, `row=65` |
+| `linear` | `wi*step` (horizontal) | `step=80` |
+| `radial` | `dist((wi,row),(cx,cy))*step` (round, grid centre) | `step=60`, `cx`/`cy` auto |
+| `sine` (fish) | `wi*step + sin(row*freq)*amp` | `step=80`, `freq=1.0`, `amp=120` |
 
-### Params communs (toutes formes)
+### Common params (all shapes)
 
-| Param | Défaut | Effet |
+| Param | Default | Effect |
 |---|---|---|
-| `color` | max thème (`FOURTH_QUARTILE`) | reflet vague, ex. `color=#ff0000` |
-| `scale` | `1.3` | zoom case au pic, `1` = désactive. Le zoom part de l'horizon moyen (centre de la 4e ligne) : chaque ligne dérive de `(centre - 57) * (scale - 1)` |
-| `dy` | `-5` | translation Y px au pic, identique sur toutes les lignes, `0` = désactive |
-| `sy` | `1.0` | multiplicateur de l'écart à l'horizon, `0` = scale sans drift vertical |
-| `rotate` | `0` | rotation degrés au pic : `90`, `-90`, `180`, `-180`, `270`, `-270`, `360`, `-360` (`0` = désactive) |
-| `duration` | `4.5` | secondes par cycle vague |
-| `gap` | `1.0` | pause secondes après vague |
-| `invert` | `false` | miroir sens propagation |
-| `direction` | `normal` | direction CSS |
+| `color` | theme max (`FOURTH_QUARTILE`) | wave reflect, ex. `color=#ff0000` |
+| `scale` | `1.3` | cell zoom at the peak, `1` = disabled. The zoom pivots on the mean horizon (centre of the 4th row): each row drifts by `(centre - 57) * (scale - 1)` |
+| `dy` | `-5` | Y translation in px at the peak, identical on every row, `0` = disabled |
+| `sy` | `1.0` | multiplier on the distance to the horizon, `0` = scale without vertical drift |
+| `rotate` | `0` | rotation in degrees at the peak: `90`, `-90`, `180`, `-180`, `270`, `-270`, `360`, `-360` (`0` = disabled) |
+| `duration` | `4.5` | seconds per wave cycle |
+| `gap` | `1.0` | pause in seconds after the wave |
+| `invert` | `false` | mirrors the propagation direction |
+| `direction` | `normal` | CSS direction |
 
-### Exemples vagues
+### Wave examples
 
 ```bash
-# défaut : diagonale reflet max thème
-PYTHONPATH=src python3 -m github_contrib --out contributions.svg --no-fetch
+# default: diagonal with the theme max reflect
+PYTHONPATH=src python3 -m github_contrib --out assets/contributions.svg --no-fetch
 
-# vague rouge sans zoom ni lift (couleur seule)
+# red wave without zoom or lift (colour only)
 PYTHONPATH=src python3 -m github_contrib --theme blue --out /tmp/blue.svg --no-fetch \
   --wave "diagonal(color=#ff0000,scale=1,dy=0)"
 
-# chaînage : diagonale puis ronde inversée
+# chain: diagonal then inverted round
 PYTHONPATH=src python3 -m github_contrib --theme blue --out /tmp/chain.svg --no-fetch \
   --wave "diagonal(color=#0a3069)" --wave "radial(invert=true,duration=3)"
 
-# poisson bleu, zoom fort + rotation 90° horaire
+# blue fish, strong zoom + 90 degree clockwise rotation
 PYTHONPATH=src python3 -m github_contrib --theme blue --out /tmp/fish.svg --no-fetch \
   --wave "sine(color=#0a3069,scale=1.5,amp=200,rotate=90)"
 
-# fichier JSON (même modèle, versionnable)
+# JSON file (same schema, versionable)
 echo '{"waves": ["diagonal", "radial(invert=true,duration=3)"]}' > /tmp/waves.json
 PYTHONPATH=src python3 -m github_contrib --out /tmp/j.svg --theme red --no-fetch \
   --waves-file /tmp/waves.json
 
-# statique Phase1, tous thèmes
-PYTHONPATH=src python3 -m github_contrib --out contributions.svg --no-fetch \
+# static Phase1, all themes
+PYTHONPATH=src python3 -m github_contrib --out assets/contributions.svg --no-fetch \
   --animate none --theme all
 ```
 
-## Exemples
+## Examples
 
 ```bash
-# tous thèmes + vague par défaut (recommandé local)
-PYTHONPATH=src python3 -m github_contrib --login ddcq --out contributions.svg --no-fetch
+# all themes + default wave (recommended locally)
+PYTHONPATH=src python3 -m github_contrib --login ddcq --out assets/contributions.svg --no-fetch
 
-# 1 seul thème bleu statique
+# 1 static blue theme
 PYTHONPATH=src python3 -m github_contrib --out /tmp/blue.svg --theme blue --animate none --no-fetch
 
-# fetch frais puis cache
+# fresh fetch then cache
 export GITHUB_TOKEN=ghp_...
-PYTHONPATH=src python3 -m github_contrib --login ddcq --out contributions.svg
+PYTHONPATH=src python3 -m github_contrib --login ddcq --out assets/contributions.svg
 ```
 
 ## Automation
 
-Action `contributions` : schedule `0 6 * * *` + `workflow_dispatch`, `runs-on: ubuntu-24.04`, `actions/checkout@v6` + `actions/setup-python@v6` (runtime Node24). Génère les 6 SVG avec `--waves-file waves.json` (config versionnée : diagonale, radiale inversée +90°, poisson -90°, linéaire inversée alternate, diagonale inversée 180°, burst coin 360°) puis commit sur branche `bot/refresh-contributions` (jamais `main` direct) : merge manuel vers `main` après contrôle.
+`contributions` action: schedule `0 6 * * *` + `workflow_dispatch`, `runs-on: ubuntu-24.04`, `actions/checkout@v6` + `actions/setup-python@v6` (Node24 runtime). Generates the 6 SVGs with `--waves-file waves.json` (versioned config: diagonal, inverted radial +90, fish -90, alternating inverted linear, inverted diagonal 180, corner burst 360) then commits on the `bot/refresh-contributions` branch (never `main` directly): manual merge into `main` after review.
 
-- Token : `github.token` par défaut (publiques). Privées incluses via secret `CONTRIB_PAT` (classic, scope `read:user`).
-- Mise en route : `git push -u origin main`, puis onglet Actions.
+- Token: `github.token` by default (public data). Private contributions included via the `CONTRIB_PAT` secret (classic, `read:user` scope).
+- The bot branch is reset to `origin/main` on every run, so it only ever carries one SVG commit. Manual merge into `main` after review.
+- Getting started: `git push -u origin main`, then the Actions tab.
 
 ## Tests
 
-Stdlib seule, pas de dépendance. `pytest` absent par défaut : suite manuelle équivalente.
+Stdlib only, no dependencies. `pytest` is not installed by default: equivalent manual run below.
 
 ```bash
 PYTHONPATH=src python3 -c "import tests.test_smoke as t; [getattr(t,k)() for k in dir(t) if k.startswith('test_')]"
 ```
 
-Couverture : palette verrouillée, `none` sans style, injection style unique, délai diagonal, `--o` = fill, thèmes enregistrés, mapping level vs API, reflet par thème, naming `theme_outputs`, palettes Winter officielles, fond sombre dark, couleur/zoom/lift custom.
+Coverage: locked palette, `none` without style, single style injection, diagonal delay, `--o` = fill, registered themes, level vs API mapping, per-theme reflect, `theme_outputs` naming, official Winter palettes, dark background, custom colour/zoom/lift.

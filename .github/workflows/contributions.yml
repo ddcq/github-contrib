@@ -18,15 +18,21 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
+      - name: Prepare bot branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Avant generation : arbre propre, le switch ne peut pas ecraser
+          # les SVG. Repart de la branche bot distante (push fast-forward).
+          git fetch origin "$BOT_BRANCH" || true
+          git checkout -B "$BOT_BRANCH" "origin/$BOT_BRANCH" 2>/dev/null || git checkout -B "$BOT_BRANCH"
       - name: Generate SVG
         env:
           GITHUB_TOKEN: ${{ secrets.CONTRIB_PAT || github.token }}
         run: PYTHONPATH=src python -m github_contrib --login ddcq --out contributions.svg --waves-file waves.json
-      - name: Commit SVG to branch
+      - name: Commit SVG
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -B "$BOT_BRANCH"
-          git add contributions.svg contributions-green.svg contributions-dark-green.svg contributions-blue.svg contributions-dark-blue.svg contributions-red.svg contributions-dark-red.svg
+          # dark-green est le theme par defaut -> contributions.svg (sans suffixe)
+          git add -- contributions*.svg
           git diff --cached --quiet || git commit -m "chore: refresh contributions.svg"
           git push -u origin "$BOT_BRANCH"
